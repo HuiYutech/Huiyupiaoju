@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>慧语电子票据</title>
-    <!-- 离线本地库：放在 assets/js/ 下 -->
     <script src="js/html2canvas.min.js"></script>
     <script src="js/jspdf.umd.min.js"></script>
     <style>
@@ -18,11 +17,11 @@
             -webkit-tap-highlight-color: transparent;
         }
         body {
-            background: #eef2f5;
+            background: #eef2f5;         /* 保留原有灰色背景 */
             font-family: 'Segoe UI', 'PingFang SC', '微软雅黑', Roboto, sans-serif;
             margin: 0;
             padding: 0;
-            overflow-x: hidden;
+            overflow-x: hidden;           /* 手机缩放后无横向滚动条 */
             display: flex;
             justify-content: center;
             align-items: flex-start;
@@ -30,11 +29,12 @@
         }
         #app-wrapper {
             width: var(--app-width);
-            transform-origin: top center;
+            transform-origin: top center;  /* 居中缩放，视觉铺满且无偏移 */
             padding: 10px 6px 30px 6px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            margin: 0 auto;               /* 电脑端居中，手机端JS会置0 */
         }
         .invoice-container,
         .control-panel,
@@ -360,24 +360,25 @@
 </div>
 
 <script>
-    // ===================== 动态缩放（手机展示完整平板界面） =====================
-    const APP_WIDTH = 794; // 与 CSS 变量一致
+    // ===================== 动态缩放（手机铺满无留白，电脑端原样显示） =====================
+    const APP_WIDTH = 794;
     const wrapper = document.getElementById('app-wrapper');
     function resizeApp() {
         const windowWidth = window.innerWidth;
         if (windowWidth < APP_WIDTH) {
             const scale = windowWidth / APP_WIDTH;
             wrapper.style.transform = `scale(${scale})`;
-            // 高度补偿：缩放后原始高度仍占据空间，通过负 margin 减少多余空白
+            wrapper.style.margin = '0';          // 清除 auto，铺满
+            // 高度补偿，避免缩放后下方多余空白
             wrapper.style.marginBottom = `-${wrapper.offsetHeight * (1 - scale)}px`;
         } else {
             wrapper.style.transform = 'none';
+            wrapper.style.margin = '0 auto';    // 电脑端居中
             wrapper.style.marginBottom = '0';
         }
     }
     window.addEventListener('resize', resizeApp);
     window.addEventListener('orientationchange', () => setTimeout(resizeApp, 100));
-    // 确保初始加载后执行
     window.addEventListener('load', () => setTimeout(resizeApp, 50));
     document.addEventListener('DOMContentLoaded', () => setTimeout(resizeApp, 50));
 
@@ -531,11 +532,9 @@
     }
 
     function updateButtonsState() {
-        let up = moveUpBtn, down = moveDownBtn, del = deleteSelectedBtn;
-        let valid = (selectedIndex >= 0 && selectedIndex < items.length && items.length > 0);
-        up.classList.toggle('disabled', !valid || selectedIndex === 0);
-        down.classList.toggle('disabled', !valid || selectedIndex === items.length-1);
-        del.classList.toggle('disabled', !valid);
+        moveUpBtn.classList.toggle('disabled', selectedIndex <= 0);
+        moveDownBtn.classList.toggle('disabled', selectedIndex < 0 || selectedIndex >= items.length - 1);
+        deleteSelectedBtn.classList.toggle('disabled', selectedIndex < 0);
     }
 
     function moveUp() { if (selectedIndex > 0) { [items[selectedIndex-1], items[selectedIndex]] = [items[selectedIndex], items[selectedIndex-1]]; selectedIndex--; renderTable(); } }
@@ -711,7 +710,6 @@
                         let scale = Math.min(1, (imageModeContainer.clientWidth-20) / img.width);
                         canvas.width = img.width * scale; canvas.height = img.height * scale;
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        // 移动品牌图和公司章到背景图容器内并居中
                         [brandImage, companyStamp].forEach(el => {
                             if (el.style.display !== 'none') {
                                 imageModeContainer.appendChild(el);
@@ -729,7 +727,6 @@
             normalContent.style.display = 'block';
             imageModeContainer.style.display = 'none';
             document.getElementById('imageControlBarExternal').style.display = 'none';
-            // 将图片移回原容器
             [brandImage, companyStamp].forEach(el => {
                 if (el.style.display !== 'none') {
                     document.getElementById('invoiceContainer').appendChild(el);
@@ -756,7 +753,7 @@
             wm.style.backgroundImage = `url(${createWatermarkDataURL(watermarkText)})`;
             clone.style.position = 'relative'; clone.appendChild(wm);
         }
-        clone.style.transform = 'none'; // 移除缩放效果
+        clone.style.transform = 'none';
         return clone;
     }
 
