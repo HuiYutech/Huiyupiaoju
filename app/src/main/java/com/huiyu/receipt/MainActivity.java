@@ -10,7 +10,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.print.PrintHelper;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
@@ -24,6 +23,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.print.PrintHelper;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -38,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 动态创建WebView，无需布局文件
+        // 动态创建 WebView，无需布局文件
         webView = new WebView(this);
         setContentView(webView);
         setupWebView();
@@ -63,14 +63,14 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient());
 
-        // 注入Android接口
+        // 注入 Android 接口
         webView.addJavascriptInterface(new WebAppInterface(this), "AndroidBridge");
 
-        // 加载本地HTML
+        // 加载本地 HTML
         webView.loadUrl("file:///android_asset/index.html");
     }
 
-    // JavaScript接口
+    // JavaScript 接口
     public class WebAppInterface {
         private MainActivity mActivity;
 
@@ -142,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // 调用系统打印服务（Android 4.4+）
+    // 调用系统打印服务（支持 Android 4.4+）
     private void printImage(String base64Data) {
         try {
             String pureBase64 = base64Data.contains(",") ? base64Data.split(",")[1] : base64Data;
