@@ -2,13 +2,14 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <title>慧语电子票据</title>
+    <!-- 离线本地库：放在 assets/js/ 下 -->
     <script src="js/html2canvas.min.js"></script>
     <script src="js/jspdf.umd.min.js"></script>
     <style>
         :root {
-            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+            --app-width: 794px; /* 210mm ≈ 794px */
         }
         * {
             box-sizing: border-box;
@@ -20,25 +21,27 @@
             background: #eef2f5;
             font-family: 'Segoe UI', 'PingFang SC', '微软雅黑', Roboto, sans-serif;
             margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+        #app-wrapper {
+            width: var(--app-width);
+            transform-origin: top center;
             padding: 10px 6px 30px 6px;
-            /* 关键：允许横向滚动，所有子元素统一固定宽度 */
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: calc(30px + var(--safe-area-bottom));
             display: flex;
             flex-direction: column;
             align-items: center;
         }
-
-        /* 统一固定宽度 – 与 A4 纸张一致，手机也不挤压 */
         .invoice-container,
         .control-panel,
         .btn-group {
-            width: 210mm;
-            min-width: 210mm;
-            max-width: 210mm;
+            width: 100%;
+            max-width: var(--app-width);
         }
-
         .invoice-container {
             position: relative;
             background: white;
@@ -63,11 +66,9 @@
         .image-mode-container canvas {
             display: block;
             margin: 0 auto;
-            cursor: default;
-            box-shadow: 0 0 0 1px rgba(0,0,0,0.12);
-            background: #fff;
             max-width: 100%;
             height: auto;
+            background: #fff;
         }
         .image-mode-container .brand-overlay,
         .image-mode-container .company-stamp {
@@ -85,7 +86,6 @@
             margin-top: 10px;
             display: flex;
             justify-content: center;
-            align-items: center;
             gap: 8px;
             background: rgba(0,0,0,0.65);
             padding: 6px 12px;
@@ -98,8 +98,8 @@
             padding: 5px 12px;
             border-radius: 32px;
             font-size: 13px;
-            cursor: pointer;
             font-weight: bold;
+            cursor: pointer;
             touch-action: manipulation;
         }
         .watermark-layer {
@@ -140,9 +140,7 @@
             left: auto; top: auto; right: auto; bottom: auto;
             display: none;
         }
-        .sign-line {
-            font-size: 14px; padding: 4px 8px; white-space: nowrap;
-        }
+        .sign-line { font-size: 14px; padding: 4px 8px; white-space: nowrap; }
         .control-panel {
             background: white;
             border-radius: 24px;
@@ -162,7 +160,7 @@
             padding: 12px 8px;
             background: transparent;
             border: none;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 600;
             color: #4a627a;
             cursor: pointer;
@@ -172,18 +170,17 @@
         .tab-btn.active { color: #2c7da0; border-bottom-color: #2c7da0; background: white; }
         .tab-pane { display: none; padding: 24px; }
         .tab-pane.active-pane { display: block; }
-        .info-edit-panel { display: flex; flex-wrap: wrap; gap: 16px 20px; align-items: flex-end; }
+        .info-edit-panel { display: flex; flex-wrap: wrap; gap: 16px 20px; }
         .info-field { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 6px; }
         .info-field label { font-size: 14px; font-weight: 600; color: #4a627a; }
         .info-field input { padding: 10px 14px; border-radius: 12px; border: 1px solid #cddfe7; font-size: 14px; width: 100%; }
-        .add-remove-panel { display: flex; flex-direction: column; gap: 24px; }
         .add-goods-form { background: #fefcf5; border-radius: 20px; padding: 20px; border: 1px solid #e9e5d5; }
         .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
         .form-field { flex: 1; min-width: 100px; }
         .form-field label { font-size: 14px; font-weight: 600; color: #4a627a; display: block; margin-bottom: 4px; }
         .form-field input, .form-field select { width: 100%; padding: 10px 14px; border-radius: 32px; border: 1px solid #cddfe7; font-size: 14px; }
         .add-btn { background: #2c7da0; color: white; border: none; padding: 10px 24px; border-radius: 32px; font-weight: bold; cursor: pointer; height: 42px; display: inline-flex; align-items: center; white-space: nowrap; }
-        .action-buttons { background: #fefcf5; border-radius: 20px; padding: 20px; border: 1px solid #e9e5d5; display: flex; gap: 20px; }
+        .action-buttons { background: #fefcf5; border-radius: 20px; padding: 20px; border: 1px solid #e9e5d5; display: flex; gap: 20px; margin-top: 16px; }
         .btn-group-row { flex: 1; display: flex; flex-direction: column; gap: 12px; background: #fff; border-radius: 16px; padding: 16px; border: 1px solid #edf2f7; }
         .btn-group-title { font-size: 14px; font-weight: 700; color: #2c7da0; border-left: 3px solid #2c7da0; padding-left: 10px; margin-bottom: 4px; }
         .btn-sm { background: #2c7da0; color: white; border: none; padding: 8px 20px; border-radius: 32px; font-weight: bold; cursor: pointer; }
@@ -194,17 +191,24 @@
         .sales-table { width: 100%; border-collapse: collapse; font-size: 14px; font-family: 'Consolas','PingFang SC', monospace; min-width: 500px; }
         .sales-table th, .sales-table td { border: 2px solid #1e2f3a; padding: 8px 6px; text-align: center; }
         .sales-table th { background: #e6eaef; font-weight: 800; }
-        .clickable-seq { cursor: pointer; background: #f0f7ff; font-weight: 600; }
-        .total-row { margin-top: 16px; display: flex; justify-content: space-between; padding: 10px 15px; border-radius: 12px; background: #f8f9fc; }
+        .clickable-seq { cursor: pointer; background: #f0f7ff; font-weight: 600; display: block; }
+        .selected-row td:first-child { background: #cce5ff; font-weight: bold; }
+        .selected-row { background: #f0f7ff; }
+        .total-row { margin-top: 16px; background: #f8f9fc; padding: 10px 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
         .amount-chinese { font-weight: 700; color: #1e4663; }
-        .btn-group { display: flex; justify-content: center; gap: 20px; margin: 20px auto 10px; }
+        .remark-box { background: #f8f9fc; padding: 8px 15px; border-radius: 12px; margin: 14px 0; display: flex; align-items: center; gap: 8px; }
+        .btn-group { display: flex; justify-content: center; gap: 20px; margin: 20px 0 10px; }
         .btn-group button { border: none; color: white; font-size: 18px; font-weight: bold; padding: 14px 32px; border-radius: 56px; cursor: pointer; }
         #saveAsImageBtn { background: #2c7da0; }
         #downloadPdfBtn { background: #d9534f; }
         #printBtn { background: #5f6c7a; }
-        .toast-msg { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: #fff; padding: 10px 22px; border-radius: 24px; z-index: 99999; opacity: 0; transition: 0.3s; }
+        .toast-msg {
+            position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: #fff; padding: 10px 22px;
+            border-radius: 24px; z-index: 99999; opacity: 0; transition: 0.3s;
+            pointer-events: none;
+        }
         .toast-msg.show { opacity: 1; }
-
         @media print {
             body { background: white; }
             .btn-group, .control-panel { display: none; }
@@ -212,199 +216,207 @@
     </style>
 </head>
 <body>
-<div class="invoice-container" id="invoiceContainer">
-    <div class="normal-content" id="normalContent">
-        <img id="brandImage" class="brand-overlay" src="" alt="品牌图" style="display:none;">
-        <img id="companyStamp" class="company-stamp" src="" alt="公司章" style="display:none;">
+<div id="app-wrapper">
+    <div class="invoice-container" id="invoiceContainer">
+        <div class="normal-content" id="normalContent">
+            <img id="brandImage" class="brand-overlay" src="" alt="品牌图" style="display:none;">
+            <img id="companyStamp" class="company-stamp" src="" alt="公司章" style="display:none;">
 
-        <div class="header-info" style="text-align:center; margin-bottom:12px;">
-            <div class="company-title" style="font-size:24px; font-weight:800; color:#0b3b4f;">XXX科技有限公司销售单</div>
-            <div style="font-size:13px; color:#2c3e50;">联系电话：000-000000 | 联系人：某某某</div>
-        </div>
-        <div style="border-bottom:2px solid #1a4d6b; margin-bottom:12px;"></div>
-        <div style="display:flex; justify-content:space-between; background:#f4f7fa; padding:8px 15px; border-radius:12px; margin:12px 0; border:1px solid #bac8d3;">
-            <span><strong>收货单位：</strong><span id="customerNameDisplay">XXX单位</span></span>
-            <span><strong>开单日期：</strong><span id="headerInvoiceDate"></span></span>
-        </div>
-        <div class="table-wrapper">
-            <table class="sales-table" id="salesTable">
-                <thead><tr><th style="width:45px">序号</th><th>名称</th><th style="width:60px">单位</th><th style="width:70px">数量</th><th style="width:100px">单价(元)</th><th style="width:90px">金额(元)</th><th>备注/类别</th></tr></thead>
-                <tbody id="tableBody"></tbody>
-            </table>
-        </div>
-        <div class="total-row">
-            <span><strong>合计(大写):</strong> <span id="amountCN" class="amount-chinese">零元整</span></span>
-            <span style="font-size:20px; color:#c0392b;">￥ <span id="amountTotal">0.00</span></span>
-        </div>
-        <div id="remarkBox" style="background:#f8f9fc; padding:8px 15px; border-radius:12px; margin:14px 0; display:flex; align-items:center;">
-            <strong>备注：</strong> <span id="remarkText">祝你生活愉快，感谢您的支持与信任！</span>
-            <button id="editRemarkBtn" style="margin-left:auto; background:transparent; border:1px solid #e2b87a; color:#b45f1b; border-radius:40px; padding:3px 10px; cursor:pointer;">✎ 编辑</button>
-        </div>
-        <div style="display:flex; justify-content:space-between; margin-top:24px; border-top:2px solid #3c5a6f; padding-top:16px;">
-            <span id="signerName">制单人：某某某</span>
-            <span style="font-size:12px; text-align:center; color:#4a5568;">本销售单盖章有效 | 电子单据与纸质同等效力</span>
-            <span><strong>单据编号：</strong><span id="invoiceNo"></span></span>
-        </div>
-    </div>
-
-    <div class="image-mode-container" id="imageModeContainer">
-        <canvas id="imageCanvas"></canvas>
-    </div>
-    <div id="imageControlBarExternal" style="display:none;" class="image-control-bar-external">
-        <button id="rotateLeftBtn">↺ 左转90°</button>
-        <button id="rotateRightBtn">↻ 右转90°</button>
-        <button id="closeImageModeBtn" style="background:#d9534f; color:white;">✕ 关闭图片</button>
-    </div>
-</div>
-
-<div class="control-panel" id="controlPanel">
-    <div class="tab-buttons">
-        <button class="tab-btn active" data-tab="basic">基本资料</button>
-        <button class="tab-btn" data-tab="edit">添加删除</button>
-        <button class="tab-btn" data-tab="image">商标管理</button>
-        <button class="tab-btn" data-tab="batch">批量解析</button>
-    </div>
-
-    <!-- 基本资料 -->
-    <div class="tab-pane active-pane" id="tab-basic">
-        <div class="info-edit-panel">
-            <div class="info-field"><label>🏢 公司名称</label><input id="editCompany" value="XXX科技有限公司销售单"></div>
-            <div class="info-field"><label>📞 联系电话</label><input id="editPhone" value="000-000000"></div>
-            <div class="info-field"><label>👤 联系人</label><input id="editContact" value="某某某"></div>
-            <div class="info-field"><label>✍️ 制单人</label><input id="editSigner" value="某某某"></div>
-            <div class="info-field"><label>🏪 收货单位</label><input id="editCustomer" value="XXX单位"></div>
-        </div>
-    </div>
-
-    <!-- 添加删除 -->
-    <div class="tab-pane" id="tab-edit">
-        <div class="add-goods-form">
-            <div class="form-row">
-                <div class="form-field"><label>商品名称</label><input id="prodName" placeholder="请输入商品名称"></div>
-                <div class="form-field"><label>单位</label><input id="prodUnit" value="个"></div>
-                <div class="form-field"><label>数量</label><input type="number" id="prodQty" value="1" step="any" min="0.01"></div>
-                <div class="form-field"><label>单价(元)</label><input type="number" id="prodPrice" value="0.00" step="0.01" min="0"></div>
+            <div class="header-info" style="text-align:center; margin-bottom:12px;">
+                <div class="company-title" style="font-size:24px; font-weight:800; color:#0b3b4f;">XXX科技有限公司销售单</div>
+                <div class="sub-title" style="font-size:13px; color:#2c3e50;">联系电话：000-000000 &nbsp;|&nbsp; 联系人：某某某</div>
             </div>
-            <div class="form-row" style="margin-top:8px;">
-                <div class="form-field"><label>备注</label><input id="prodRemark" placeholder="可选"></div>
-                <div class="form-field" style="flex:0 0 auto;"><button id="addItemBtn" class="add-btn">➕ 添加商品</button></div>
+            <div style="border-bottom:2px solid #1a4d6b; margin-bottom:12px;"></div>
+            <div class="meta-row" style="display:flex; justify-content:space-between; background:#f4f7fa; padding:8px 15px; border-radius:12px; margin:12px 0; border:1px solid #bac8d3;">
+                <div class="meta-item"><strong>收货单位：</strong><span id="customerNameDisplay">XXX单位</span></div>
+                <div class="meta-item"><strong>开单日期：</strong><span id="headerInvoiceDate"></span></div>
+            </div>
+            <div class="table-wrapper">
+                <table class="sales-table" id="salesTable">
+                    <thead><tr><th style="width:45px">序号</th><th>名称</th><th style="width:60px">单位</th><th style="width:70px">数量</th><th style="width:100px">单价(元)</th><th style="width:90px">金额(元)</th><th>备注/类别</th></tr></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            <div class="total-row">
+                <div class="total-left"><strong>合计(大写):</strong> <span id="amountCN" class="amount-chinese">零元整</span></div>
+                <div class="total-right" style="font-size:20px; color:#c0392b;">￥ <span id="amountTotal">0.00</span></div>
+            </div>
+            <div class="remark-box" id="remarkBox">
+                <strong>备 注：</strong>
+                <span id="remarkText">祝你生活愉快，感谢您的支持与信任！</span>
+                <button id="editRemarkBtn" style="margin-left:auto; background:transparent; border:1px solid #e2b87a; color:#b45f1b; border-radius:40px; padding:3px 10px; cursor:pointer;">✎ 编辑</button>
+            </div>
+            <div class="sign-stamp" style="display:flex; justify-content:space-between; margin-top:24px; border-top:2px solid #3c5a6f; padding-top:16px;">
+                <div class="sign-left"><span id="signerName">制单人：某某某</span></div>
+                <div class="sign-center" style="font-size:12px; text-align:center; color:#4a5568;">本销售单盖章有效 | 电子单据与纸质同等效力</div>
+                <div class="sign-right"><span><strong>单据编号：</strong><span id="invoiceNo"></span></span></div>
             </div>
         </div>
-        <div class="action-buttons" style="margin-top:16px;">
-            <div class="btn-group-row">
-                <div class="btn-group-title">✏️ 编辑当前选中商品</div>
-                <button id="loadEditBtn" class="action-icon-btn">📋 加载选中</button>
-                <button id="saveEditBtn" class="btn-sm">💾 保存修改</button>
-            </div>
-            <div class="btn-group-row">
-                <div class="btn-group-title">🔁 调整顺序</div>
-                <button id="moveUpBtn" class="action-icon-btn">↑ 上移</button>
-                <button id="moveDownBtn" class="action-icon-btn">↓ 下移</button>
-            </div>
-            <div class="btn-group-row">
-                <div class="btn-group-title">🗑️ 删除操作</div>
-                <button id="deleteSelectedBtn" class="action-icon-btn danger">删除选中</button>
-                <button id="clearAllBtn" class="btn-sm btn-sm-danger">清空全部</button>
-            </div>
+
+        <div class="image-mode-container" id="imageModeContainer">
+            <canvas id="imageCanvas"></canvas>
+        </div>
+        <div id="imageControlBarExternal" style="display:none;" class="image-control-bar-external">
+            <button id="rotateLeftBtn">↺ 左转90°</button>
+            <button id="rotateRightBtn">↻ 右转90°</button>
+            <button id="closeImageModeBtn" style="background:#d9534f; color:white;">✕ 关闭图片</button>
         </div>
     </div>
 
-    <!-- 商标管理（完整功能） -->
-    <div class="tab-pane" id="tab-image">
-        <div style="margin-bottom:16px; font-weight:500; font-size:14px;">📎 手指拖拽可移动图片，图片自动保存（离线缓存）</div>
-        <div class="img-manager-group" style="display:flex; flex-direction:column; gap:24px;">
-            <div style="background:#f9fafb; padding:16px 20px; border-radius:20px; border:1px solid #e2edf2;">
-                <div style="font-weight:600; margin-bottom:8px;">🏢 品牌图</div>
-                <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
-                    <button id="uploadBrandBtn" class="btn-sm" style="background:#5f6c7a;">上传</button>
-                    <button id="removeBrandBtn" class="btn-sm" style="background:#bc6c25;">移除</button>
-                    <div class="size-control" style="display:flex; align-items:center; gap:8px;">
-                        <span>宽(px):</span>
-                        <input type="number" id="brandWidth" value="120" step="10" min="30" max="400" style="width:70px;">
+    <div class="control-panel" id="controlPanel">
+        <div class="tab-buttons">
+            <button class="tab-btn active" data-tab="basic">基本资料</button>
+            <button class="tab-btn" data-tab="edit">添加删除</button>
+            <button class="tab-btn" data-tab="image">商标管理</button>
+            <button class="tab-btn" data-tab="batch">批量解析</button>
+        </div>
+
+        <div class="tab-pane active-pane" id="tab-basic">
+            <div class="info-edit-panel">
+                <div class="info-field"><label>🏢 公司名称</label><input id="editCompany" value="XXX科技有限公司销售单"></div>
+                <div class="info-field"><label>📞 联系电话</label><input id="editPhone" value="000-000000"></div>
+                <div class="info-field"><label>👤 联系人</label><input id="editContact" value="某某某"></div>
+                <div class="info-field"><label>✍️ 制单人</label><input id="editSigner" value="某某某"></div>
+                <div class="info-field"><label>🏪 收货单位</label><input id="editCustomer" value="XXX单位"></div>
+            </div>
+        </div>
+        <div class="tab-pane" id="tab-edit">
+            <div class="add-goods-form">
+                <div class="form-row">
+                    <div class="form-field"><label>商品名称</label><input id="prodName" placeholder="请输入商品名称"></div>
+                    <div class="form-field"><label>单位</label><input id="prodUnit" value="个"></div>
+                    <div class="form-field"><label>数量</label><input type="number" id="prodQty" value="1" step="any" min="0.01"></div>
+                    <div class="form-field"><label>单价(元)</label><input type="number" id="prodPrice" value="0.00" step="0.01" min="0"></div>
+                </div>
+                <div class="form-row" style="margin-top:8px;">
+                    <div class="form-field"><label>备注</label><input id="prodRemark" placeholder="可选"></div>
+                    <div class="form-field" style="flex:0 0 auto;"><button id="addItemBtn" class="add-btn">➕ 添加商品</button></div>
+                </div>
+            </div>
+            <div class="action-buttons">
+                <div class="btn-group-row"><div class="btn-group-title">✏️ 编辑当前选中商品</div><button id="loadEditBtn" class="action-icon-btn">📋 加载选中</button><button id="saveEditBtn" class="btn-sm">💾 保存修改</button></div>
+                <div class="btn-group-row"><div class="btn-group-title">🔁 调整顺序</div><button id="moveUpBtn" class="action-icon-btn">↑ 上移</button><button id="moveDownBtn" class="action-icon-btn">↓ 下移</button></div>
+                <div class="btn-group-row"><div class="btn-group-title">🗑️ 删除操作</div><button id="deleteSelectedBtn" class="action-icon-btn danger">删除选中</button><button id="clearAllBtn" class="btn-sm btn-sm-danger">清空全部</button></div>
+            </div>
+        </div>
+        <div class="tab-pane" id="tab-image">
+            <div style="margin-bottom:16px; font-weight:500; font-size:14px;">📎 手指拖拽可移动图片，图片自动保存（离线缓存）</div>
+            <div style="display:flex; flex-direction:column; gap:24px;">
+                <div style="background:#f9fafb; padding:16px 20px; border-radius:20px; border:1px solid #e2edf2;">
+                    <div style="font-weight:600; margin-bottom:8px;">🏢 品牌图</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+                        <button id="uploadBrandBtn" class="btn-sm" style="background:#5f6c7a;">上传</button>
+                        <button id="removeBrandBtn" class="btn-sm" style="background:#bc6c25;">移除</button>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span>宽(px):</span>
+                            <input type="number" id="brandWidth" value="120" step="10" min="30" max="400" style="width:70px; padding:4px; border-radius: 20px; border:1px solid #cddfe7;">
+                        </div>
+                        <button id="applyBrandSize" class="action-icon-btn">应用</button>
                     </div>
-                    <button id="applyBrandSize" class="action-icon-btn">应用</button>
+                    <input type="file" id="brandInput" accept="image/*" style="display:none;">
                 </div>
-                <input type="file" id="brandInput" accept="image/*" style="display:none;">
-            </div>
-            <div style="background:#f9fafb; padding:16px 20px; border-radius:20px; border:1px solid #e2edf2;">
-                <div style="font-weight:600; margin-bottom:8px;">🖼️ 公司章</div>
-                <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
-                    <button id="uploadStampBtn" class="btn-sm" style="background:#5f6c7a;">上传</button>
-                    <button id="removeStampBtn" class="btn-sm" style="background:#bc6c25;">移除</button>
-                    <div class="size-control" style="display:flex; align-items:center; gap:8px;">
-                        <span>宽(px):</span>
-                        <input type="number" id="stampWidth" value="150" step="10" min="50" max="500" style="width:70px;">
+                <div style="background:#f9fafb; padding:16px 20px; border-radius:20px; border:1px solid #e2edf2;">
+                    <div style="font-weight:600; margin-bottom:8px;">🖼️ 公司章</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+                        <button id="uploadStampBtn" class="btn-sm" style="background:#5f6c7a;">上传</button>
+                        <button id="removeStampBtn" class="btn-sm" style="background:#bc6c25;">移除</button>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span>宽(px):</span>
+                            <input type="number" id="stampWidth" value="150" step="10" min="50" max="500" style="width:70px; padding:4px; border-radius: 20px; border:1px solid #cddfe7;">
+                        </div>
+                        <button id="applyStampSize" class="action-icon-btn">应用</button>
                     </div>
-                    <button id="applyStampSize" class="action-icon-btn">应用</button>
+                    <input type="file" id="stampInput" accept="image/*" style="display:none;">
                 </div>
-                <input type="file" id="stampInput" accept="image/*" style="display:none;">
-            </div>
-            <div style="background:#eef7ff; padding:16px 20px; border-radius:20px; border:2px dashed #2c7da0;">
-                <div style="font-weight:600;">🖼️ 导入背景图（自动适应宽度，可旋转）</div>
-                <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:8px;">
-                    <button id="importFullImageBtn" class="btn-sm" style="background:#2c7da0;">📂 导入图片</button>
-                    <span style="font-size:12px; color:#666;">旋转后品牌图/公司章自动居中</span>
+                <div style="background:#eef7ff; padding:16px 20px; border-radius:20px; border:2px dashed #2c7da0;">
+                    <div style="font-weight:600;">🖼️ 导入背景图（自动适应宽度，可旋转）</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:8px;">
+                        <button id="importFullImageBtn" class="btn-sm" style="background:#2c7da0;">📂 导入图片</button>
+                        <span style="font-size:12px; color:#666;">旋转后品牌图/公司章自动居中</span>
+                    </div>
+                    <input type="file" id="fullImageInput" accept="image/*" style="display:none;">
                 </div>
-                <input type="file" id="fullImageInput" accept="image/*" style="display:none;">
             </div>
+            <div style="margin-top:12px; font-size:11px; color:#888;">💡 点击移除会清除缓存。</div>
         </div>
-        <div style="margin-top:12px; font-size:11px; color:#888;">💡 点击移除会清除缓存。</div>
-    </div>
-
-    <!-- 批量解析 -->
-    <div class="tab-pane" id="tab-batch">
-        <div style="background:#f9fafb; border-radius:20px; padding:20px; border:1px solid #e2edf2;">
-            <div style="font-weight:700; font-size:16px; color:#1e4663; margin-bottom:16px;">🧠 精准批量解析</div>
-            <textarea id="batchRawInput" rows="5" style="width:100%; border-radius:16px; border:1px solid #cbd5e1; padding:14px; font-family:monospace; font-size:14px; min-height:120px;" placeholder="输入商品行，例如：智能平板 3 台 2499"></textarea>
-            <div id="parsePreview" style="margin-top:16px; max-height:200px; overflow-y:auto; background:white; border-radius:16px; padding:12px;"></div>
-            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:16px;">
-                <button id="parseBtn" class="btn-outline">🔍 智能解析预览</button>
-                <button id="confirmAddBatchBtn" class="btn-sm">✓ 确认添加全部</button>
+        <div class="tab-pane" id="tab-batch">
+            <div style="background:#f9fafb; border-radius:20px; padding:20px; border:1px solid #e2edf2;">
+                <div style="font-weight:700; font-size:16px; color:#1e4663; margin-bottom:16px;">🧠 精准批量解析 (自动识别数量/单位/单价/总价)</div>
+                <textarea id="batchRawInput" rows="5" style="width:100%; border-radius:16px; border:1px solid #cbd5e1; padding:14px; font-family:monospace; font-size:14px; min-height:120px;" placeholder="支持格式示例：&#10;商品名称 数量 单位 单价     → 智能平板 3 台 2499&#10;商品名称 数量单位 单价     → 网线 5根 2.8&#10;商品名称 数量 单价         → 鼠标 10 25（单位默认为个）&#10;商品名称 数量单位 总价     → 键盘 2个 160（自动计算单价80）&#10;商品名称 总价             → 工费 600（数量默认为1）"></textarea>
+                <div id="parsePreview" style="margin-top:16px; max-height:200px; overflow-y:auto; background:white; border-radius:16px; padding:12px; border:1px solid #e2e8f0;"></div>
+                <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:16px;">
+                    <button id="parseBtn" class="btn-outline" style="background:transparent; border:1px solid #2c7da0; color:#2c7da0; padding:6px 16px; border-radius:32px; font-weight:bold; cursor:pointer;">🔍 智能解析预览</button>
+                    <button id="confirmAddBatchBtn" class="btn-sm">✓ 确认添加全部</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<div class="btn-group">
-    <button id="saveAsImageBtn">📷 保存为图片</button>
-    <button id="downloadPdfBtn">📄 下载 PDF</button>
-    <button id="printBtn">🖨️ 打印销售单</button>
+    <div class="btn-group">
+        <button id="saveAsImageBtn">📷 保存为图片</button>
+        <button id="downloadPdfBtn">📄 下载 PDF</button>
+        <button id="printBtn">🖨️ 打印销售单</button>
+    </div>
 </div>
 
 <script>
-    // ==================== Android Bridge ====================
+    // ===================== 动态缩放（手机展示完整平板界面） =====================
+    const APP_WIDTH = 794; // 与 CSS 变量一致
+    const wrapper = document.getElementById('app-wrapper');
+    function resizeApp() {
+        const windowWidth = window.innerWidth;
+        if (windowWidth < APP_WIDTH) {
+            const scale = windowWidth / APP_WIDTH;
+            wrapper.style.transform = `scale(${scale})`;
+            // 高度补偿：缩放后原始高度仍占据空间，通过负 margin 减少多余空白
+            wrapper.style.marginBottom = `-${wrapper.offsetHeight * (1 - scale)}px`;
+        } else {
+            wrapper.style.transform = 'none';
+            wrapper.style.marginBottom = '0';
+        }
+    }
+    window.addEventListener('resize', resizeApp);
+    window.addEventListener('orientationchange', () => setTimeout(resizeApp, 100));
+    // 确保初始加载后执行
+    window.addEventListener('load', () => setTimeout(resizeApp, 50));
+    document.addEventListener('DOMContentLoaded', () => setTimeout(resizeApp, 50));
+
+    // ===================== Android 桥接 =====================
     const isAndroidApp = typeof AndroidBridge !== 'undefined' && AndroidBridge !== null;
     function showToast(msg) {
         if (isAndroidApp) { try { AndroidBridge.showToast(msg); } catch(e) {} }
         let toast = document.getElementById('globalToast');
         if (!toast) {
-            toast = document.createElement('div'); toast.id = 'globalToast'; toast.className = 'toast-msg';
+            toast = document.createElement('div');
+            toast.id = 'globalToast';
+            toast.className = 'toast-msg';
             document.body.appendChild(toast);
         }
-        toast.textContent = msg; toast.classList.add('show');
+        toast.textContent = msg;
+        toast.classList.add('show');
         clearTimeout(toast._timeout);
         toast._timeout = setTimeout(() => toast.classList.remove('show'), 2000);
     }
-    function saveFileNative(base64, name, mime) {
-        if (isAndroidApp) { try { AndroidBridge.saveFile(base64, name, mime); return true; } catch(e) {} }
+    function nativeSaveFile(base64, fileName, mimeType) {
+        if (isAndroidApp) { try { AndroidBridge.saveFile(base64, fileName, mimeType); return true; } catch(e) {} }
         return false;
     }
-    function printNative(base64) {
+    function nativePrintBase64(base64) {
         if (isAndroidApp) { try { AndroidBridge.printBase64(base64); return true; } catch(e) {} }
         return false;
     }
 
-    // ==================== 水印 ====================
+    // ===================== 水印 =====================
     let lastWatermark = localStorage.getItem('lastWatermark_v2') || '';
     function askWatermark() {
         return new Promise(resolve => {
-            if (!confirm('是否添加防伪水印？')) { resolve(null); return; }
+            if (!confirm('是否添加防伪水印？\n点击“确定”添加，取消则不添加。')) { resolve(null); return; }
             let def = lastWatermark || 'XX公司收款专用2026';
-            let inp = prompt('水印文字（最多18字）', def);
-            if (!inp) { resolve(null); return; }
+            let inp = prompt('请输入水印文字（最多18个字符）:', def);
+            if (inp === null) { resolve(null); return; }
             let t = inp.trim();
-            if (!t) { alert('水印不能为空'); resolve(null); return; }
-            if (t.length > 18) { alert('最多18个字符'); resolve(null); return; }
+            if (!t) { alert('水印内容不能为空，将不添加水印。'); resolve(null); return; }
+            if (t.length > 18) { alert('水印文字超过18个字符，请重新输入。'); resolve(null); return; }
             localStorage.setItem('lastWatermark_v2', t);
             lastWatermark = t;
             resolve(t);
@@ -414,65 +426,100 @@
         let c = document.createElement('canvas'), s = 200;
         c.width = s; c.height = s;
         let ctx = c.getContext('2d');
-        ctx.font = 'bold 18px "PingFang SC","微软雅黑"';
+        ctx.font = 'bold 20px "PingFang SC", "微软雅黑"';
         ctx.fillStyle = '#7f8c8d';
         ctx.translate(s/2, s/2);
-        ctx.rotate(-0.5);
+        ctx.rotate(-28 * Math.PI / 180);
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(text, 0, 0);
         return c.toDataURL();
     }
 
-    // ==================== 数据 ====================
-    let items = [], selectedIndex = -1;
-    const UNITS = new Set(['个','台','套','根','件','只','条','支','箱','包','瓶','盒','桶','双','对','米','千克','公斤','克','升','毫升','袋','卷','组','部','块','片','张','把','粒','罐','打','份','册','本','辆','架','顶','副','串','捆','扎','排','座','栋','扇','盏','枚']);
-    function save() {
+    // ===================== 业务数据 =====================
+    let items = [];
+    let selectedIndex = -1;
+    const STORAGE_KEY = 'SmartSalesInvoiceData_v2';
+    const STANDARD_UNITS = new Set(['个','台','套','根','件','只','条','支','箱','包','瓶','盒','桶','双','对','米','千克','公斤','克','升','毫升','袋','卷','组','部','块','片','张','把','粒','罐','打','份','册','本','辆','架','顶','副','串','捆','扎','排','座','栋','扇','盏','枚','轴','码','英尺','英寸','厘米','毫米','GB','TB']);
+
+    function saveData() {
         try {
-            localStorage.setItem('invoiceData_v2', JSON.stringify({
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
                 items, selectedIndex,
                 company: editCompany.value, phone: editPhone.value,
                 contact: editContact.value, signer: editSigner.value,
                 customer: editCustomer.value, remark: remarkText.innerText
             }));
-        } catch(e){}
+        } catch(e) {}
     }
-    function load() {
-        let d = localStorage.getItem('invoiceData_v2');
-        if (!d) return false;
+    function loadData() {
+        let raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
         try {
-            d = JSON.parse(d);
-            items = d.items || []; selectedIndex = d.selectedIndex ?? -1;
-            editCompany.value = d.company || ''; editPhone.value = d.phone || '';
-            editContact.value = d.contact || ''; editSigner.value = d.signer || '';
-            editCustomer.value = d.customer || ''; remarkText.innerText = d.remark || '';
+            let data = JSON.parse(raw);
+            items = data.items || []; selectedIndex = data.selectedIndex ?? -1;
+            editCompany.value = data.company || ''; editPhone.value = data.phone || '';
+            editContact.value = data.contact || ''; editSigner.value = data.signer || '';
+            editCustomer.value = data.customer || ''; remarkText.innerText = data.remark || '';
             syncInfo(); renderTable(); return true;
         } catch(e) { return false; }
     }
+
     function syncInfo() {
         document.querySelector('.company-title').innerText = editCompany.value || '销售单';
-        document.querySelector('.sub-title') && (document.querySelector('.sub-title').innerHTML = `联系电话：${editPhone.value} | 联系人：${editContact.value}`);
+        document.querySelector('.sub-title').innerHTML = `联系电话：${editPhone.value || ''} &nbsp;|&nbsp; 联系人：${editContact.value || ''}`;
         signerName.innerText = '制单人：' + (editSigner.value || '');
         customerNameDisplay.innerText = editCustomer.value || '';
-        save();
+        saveData();
     }
-    function setMeta() {
-        let now = new Date(), y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0'), d = String(now.getDate()).padStart(2,'0');
-        headerInvoiceDate.innerText = `${y}-${m}-${d} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-        invoiceNo.innerText = `XS-${y}${m}${d}-${Math.floor(Math.random()*1000)}`;
+
+    function setInvoiceMeta() {
+        let d = new Date();
+        let y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+        let hours = String(d.getHours()).padStart(2,'0'), minutes = String(d.getMinutes()).padStart(2,'0');
+        headerInvoiceDate.innerText = `${y}-${m}-${day} ${hours}:${minutes}`;
+        invoiceNo.innerText = `XS-${y}${m}${day}-${Math.floor(Math.random()*1000)}`;
     }
+
+    function convertCurrency(money) {
+        if (isNaN(money)) return '零元整';
+        let num = Math.round(parseFloat(money)*100)/100;
+        let digit = '零壹贰叁肆伍陆柒捌玖', units = ['','拾','佰','仟'], big = ['元','万','亿'];
+        let s = '', p = 0, int = Math.floor(num);
+        while (int > 0) {
+            let part = int % 10000, partStr = '', q = 0, tmp = part;
+            while (tmp > 0) { let cur = tmp % 10; partStr = (cur ? digit[cur] + units[q] : partStr && partStr[0]!=='零' ? '零'+partStr : partStr); tmp = Math.floor(tmp/10); q++; }
+            if (part < 1000 && p > 0 && s && s[0]!=='零') partStr = '零' + partStr;
+            s = partStr + (p===0?'':big[p]) + s;
+            int = Math.floor(int/10000); p++;
+        }
+        return s + '元' + (Math.round(num*100)%100 === 0 ? '整' : '');
+    }
+
+    function getSubtotal() { return items.reduce((s, i) => s + i.qty * i.price, 0); }
+
+    function updateTotal() {
+        let sub = getSubtotal();
+        amountTotal.innerText = sub.toFixed(2);
+        amountCN.innerHTML = convertCurrency(sub);
+        updateButtonsState();
+        saveData();
+    }
+
     function renderTable() {
         let tbody = tableBody; tbody.innerHTML = '';
         if (!items.length) {
             selectedIndex = -1;
             let row = tbody.insertRow(); row.insertCell().colSpan = 7;
-            row.cells[0].style.textAlign = 'center'; row.cells[0].innerText = '✨ 暂无商品';
-            updateTotal(); save(); return;
+            row.cells[0].style.textAlign = 'center'; row.cells[0].style.padding = '24px';
+            row.cells[0].innerText = '✨ 暂无商品，请添加商品 ✨';
+            updateTotal(); saveData(); return;
         }
         items.forEach((it, idx) => {
             let row = tbody.insertRow();
             if (idx === selectedIndex) row.classList.add('selected-row');
-            row.insertCell().innerHTML = `<span class="clickable-seq" style="display:block;">${idx+1}</span>`;
-            row.querySelector('.clickable-seq').onclick = (e) => { selectedIndex = idx; renderTable(); };
+            let seqCell = row.insertCell();
+            seqCell.innerHTML = `<span class="clickable-seq">${idx+1}</span>`;
+            seqCell.querySelector('.clickable-seq').onclick = (e) => { e.stopPropagation(); selectedIndex = idx; renderTable(); };
             row.insertCell().innerText = it.name;
             row.insertCell().innerText = it.unit;
             row.insertCell().innerText = it.qty;
@@ -480,55 +527,101 @@
             row.insertCell().innerText = (it.qty * it.price).toFixed(2);
             row.insertCell().innerText = it.remark || '';
         });
-        updateTotal(); save();
-    }
-    function updateTotal() {
-        let sum = items.reduce((s, i) => s + i.qty * i.price, 0);
-        amountTotal.innerText = sum.toFixed(2);
-        amountCN.innerHTML = (function(m) {
-            if (isNaN(m)) return '零元整';
-            let digit = '零壹贰叁肆伍陆柒捌玖', units = ['','拾','佰','仟'], big = ['元','万','亿'];
-            let s = '', p = 0, int = Math.floor(m);
-            while (int > 0) {
-                let part = int % 10000, partStr = '', q = 0, tmp = part;
-                while (tmp > 0) { let cur = tmp % 10; partStr = (cur ? digit[cur] + units[q] : partStr && partStr[0]!=='零' ? '零'+partStr : partStr); tmp = Math.floor(tmp / 10); q++; }
-                if (part < 1000 && p > 0 && s && s[0]!=='零') partStr = '零' + partStr;
-                s = partStr + (p===0?'':big[p]) + s;
-                int = Math.floor(int / 10000); p++;
-            }
-            return s + '元' + (Math.round(m*100)%100 === 0 ? '整' : '');
-        })(sum);
+        updateTotal(); updateButtonsState(); saveData();
     }
 
-    // ==================== 拖拽和图片管理 ====================
+    function updateButtonsState() {
+        let up = moveUpBtn, down = moveDownBtn, del = deleteSelectedBtn;
+        let valid = (selectedIndex >= 0 && selectedIndex < items.length && items.length > 0);
+        up.classList.toggle('disabled', !valid || selectedIndex === 0);
+        down.classList.toggle('disabled', !valid || selectedIndex === items.length-1);
+        del.classList.toggle('disabled', !valid);
+    }
+
+    function moveUp() { if (selectedIndex > 0) { [items[selectedIndex-1], items[selectedIndex]] = [items[selectedIndex], items[selectedIndex-1]]; selectedIndex--; renderTable(); } }
+    function moveDown() { if (selectedIndex < items.length-1) { [items[selectedIndex+1], items[selectedIndex]] = [items[selectedIndex], items[selectedIndex+1]]; selectedIndex++; renderTable(); } }
+    function deleteSelected() { if (selectedIndex >= 0 && confirm(`删除「${items[selectedIndex].name}」?`)) { items.splice(selectedIndex, 1); selectedIndex = -1; renderTable(); } }
+
+    function addManual() {
+        let name = prodName.value.trim(); if (!name) { alert('请输入商品名称'); return; }
+        items.push({ name, unit: prodUnit.value || '个', qty: parseFloat(prodQty.value)||1, price: parseFloat(prodPrice.value)||0, remark: prodRemark.value });
+        if (items.length === 1) selectedIndex = 0;
+        renderTable(); prodName.value = ''; prodRemark.value = ''; prodUnit.value = '个'; prodQty.value = '1'; prodPrice.value = '0.00';
+    }
+    function clearAll() { if (items.length && confirm('清空所有商品？')) { items = []; selectedIndex = -1; renderTable(); } }
+    function loadSelectedToForm() { if (selectedIndex < 0 || !items[selectedIndex]) { alert('请先点击序号选中一个商品'); return; } let it = items[selectedIndex]; prodName.value = it.name; prodUnit.value = it.unit; prodQty.value = it.qty; prodPrice.value = it.price; prodRemark.value = it.remark || ''; }
+    function saveEditToSelected() {
+        if (selectedIndex < 0 || !items[selectedIndex]) { alert('请先选中要修改的商品'); return; }
+        let name = prodName.value.trim(); if (!name) { alert('商品名称不能为空'); return; }
+        items[selectedIndex] = { name, unit: prodUnit.value || '个', qty: parseFloat(prodQty.value)||1, price: parseFloat(prodPrice.value)||0, remark: prodRemark.value };
+        renderTable(); showToast('商品已修改');
+    }
+
+    let parsedBuffer = [];
+    function parseProductLine(line) {
+        line = line.trim(); if (!line) return null;
+        let priceInfo = line.match(/(\d+(?:\.\d{1,2})?)\s*元?\s*$/);
+        if (!priceInfo) return null;
+        let totalPrice = parseFloat(priceInfo[1]), rest = line.substring(0, priceInfo.index).trim();
+        let qty = 1, unit = '个', name = rest;
+        let qtyUnitMatch = rest.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z\u4e00-\u9fa5]{1,4})$/);
+        if (qtyUnitMatch) {
+            let tmpQty = parseFloat(qtyUnitMatch[1]), tmpUnit = qtyUnitMatch[2];
+            if (tmpQty > 0 && STANDARD_UNITS.has(tmpUnit)) { qty = tmpQty; unit = tmpUnit; name = rest.substring(0, rest.length - qtyUnitMatch[0].length).trim(); }
+        }
+        if (!name) name = rest;
+        for (let u of STANDARD_UNITS) if (name.endsWith(u)) { name = name.substring(0, name.length - u.length).trim(); break; }
+        if (name === "") name = "商品";
+        let unitPrice = Math.round((totalPrice / qty) * 100) / 100;
+        return { name, unit, qty, price: unitPrice };
+    }
+    function parseBatch() {
+        let lines = batchRawInput.value.split(/\r?\n/).filter(l => l.trim());
+        let res = lines.map(l => parseProductLine(l)).filter(Boolean);
+        parsedBuffer = res;
+        parsePreview.innerHTML = res.length ? res.map(p => `<span style="display:inline-block; background:#f1f5f9; border-radius:24px; padding:4px 12px; margin:4px;">✅ ${p.name} ${p.qty}${p.unit} ¥${p.price.toFixed(2)}</span>`).join('') : '<span style="color:#e67e22;">⚠️ 未能识别有效商品</span>';
+    }
+    function confirmAddBatch() {
+        if (!parsedBuffer.length) { alert('没有解析成功的商品，请先点击“智能解析预览”'); return; }
+        parsedBuffer.forEach(p => items.push({ ...p, remark: '' }));
+        if (items.length && selectedIndex === -1) selectedIndex = 0;
+        renderTable(); parsedBuffer = []; parsePreview.innerHTML = '<span style="color:#2e7d64;">✅ 已成功添加</span>';
+        batchRawInput.value = '';
+    }
+
+    // ===================== 图片拖拽与管理 =====================
     function makeDraggable(el) {
-        let drag = false, sx, sy, sl, st;
+        if (!el) return;
+        let drag = false, startX, startY, startL, startT;
         const onStart = (x, y) => {
             if (!el.src || el.style.display === 'none') return;
-            drag = true; sx = x; sy = y;
-            sl = parseFloat(el.style.left) || 0; st = parseFloat(el.style.top) || 0;
+            drag = true; startX = x; startY = y;
+            startL = parseFloat(el.style.left) || 0; startT = parseFloat(el.style.top) || 0;
             el.classList.add('dragging');
+            document.body.style.userSelect = 'none'; document.body.style.webkitUserSelect = 'none';
         };
         const onMove = (x, y) => {
             if (!drag) return;
-            el.style.left = (sl + x - sx) + 'px';
-            el.style.top = (st + y - sy) + 'px';
-            (el.id === 'brandImage' ? saveBrand : saveStamp)();
+            el.style.left = (startL + x - startX) + 'px';
+            el.style.top = (startT + y - startY) + 'px';
+            if (el.id === 'brandImage') saveBrandState();
+            else if (el.id === 'companyStamp') saveStampState();
         };
-        const onEnd = () => { drag = false; el.classList.remove('dragging'); };
+        const onEnd = () => { drag = false; el.classList.remove('dragging'); document.body.style.userSelect = ''; document.body.style.webkitUserSelect = ''; };
 
         el.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX, e.clientY); });
-        el.addEventListener('touchstart', e => { e.preventDefault(); let t = e.touches[0]; onStart(t.clientX, t.clientY); }, {passive: false});
+        el.addEventListener('touchstart', e => { e.preventDefault(); let t = e.touches[0]; onStart(t.clientX, t.clientY); }, { passive: false });
         window.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
         window.addEventListener('mouseup', onEnd);
-        window.addEventListener('touchmove', e => { if (drag) { e.preventDefault(); let t = e.touches[0]; onMove(t.clientX, t.clientY); } }, {passive: false});
+        window.addEventListener('touchmove', e => { if (drag) { e.preventDefault(); let t = e.touches[0]; onMove(t.clientX, t.clientY); } }, { passive: false });
         window.addEventListener('touchend', onEnd);
     }
-    function saveBrand() {
+
+    function saveBrandState() {
         let b = brandImage;
         if (b.src && b.style.display !== 'none') {
             localStorage.setItem('brandImg', b.src);
-            localStorage.setItem('brandPos', JSON.stringify({l: b.style.left, t: b.style.top}));
+            localStorage.setItem('brandPos', JSON.stringify({ l: b.style.left, t: b.style.top }));
             localStorage.setItem('brandW', brandWidth.value);
         }
     }
@@ -543,11 +636,11 @@
             makeDraggable(brandImage);
         }
     }
-    function saveStamp() {
+    function saveStampState() {
         let s = companyStamp;
         if (s.src && s.style.display !== 'none') {
             localStorage.setItem('stampImg', s.src);
-            localStorage.setItem('stampPos', JSON.stringify({l: s.style.left, t: s.style.top}));
+            localStorage.setItem('stampPos', JSON.stringify({ l: s.style.left, t: s.style.top }));
             localStorage.setItem('stampW', stampWidth.value);
         }
     }
@@ -556,12 +649,13 @@
         if (src) {
             companyStamp.src = src; companyStamp.style.display = 'inline-block';
             let pos = JSON.parse(localStorage.getItem('stampPos') || '{}');
-            companyStamp.style.left = pos.l || '150px'; companyStamp.style.top = pos.t || '100px';
+            companyStamp.style.left = pos.l || '150px'; companyStamp.style.top = pos.t || '80px';
             stampWidth.value = localStorage.getItem('stampW') || '150';
             companyStamp.style.width = stampWidth.value + 'px';
             makeDraggable(companyStamp);
         }
     }
+
     function initImageControls() {
         uploadBrandBtn.onclick = () => brandInput.click();
         brandInput.onchange = e => {
@@ -572,16 +666,16 @@
                     brandImage.src = ev.target.result; brandImage.style.display = 'inline-block';
                     brandImage.style.left = '20px'; brandImage.style.top = '0px';
                     brandWidth.value = '120'; brandImage.style.width = '120px';
-                    saveBrand(); makeDraggable(brandImage);
+                    saveBrandState(); makeDraggable(brandImage);
                 }; r.readAsDataURL(f);
             } else alert('仅支持PNG/JPG');
             brandInput.value = '';
         };
         removeBrandBtn.onclick = () => {
             brandImage.removeAttribute('src'); brandImage.style.display = 'none';
-            localStorage.removeItem('brandImg'); localStorage.removeItem('brandPos');
+            localStorage.removeItem('brandImg'); localStorage.removeItem('brandPos'); localStorage.removeItem('brandW');
         };
-        applyBrandSize.onclick = () => { brandImage.style.width = brandWidth.value + 'px'; saveBrand(); };
+        applyBrandSize.onclick = () => { brandImage.style.width = brandWidth.value + 'px'; saveBrandState(); };
 
         uploadStampBtn.onclick = () => stampInput.click();
         stampInput.onchange = e => {
@@ -592,16 +686,16 @@
                     companyStamp.src = ev.target.result; companyStamp.style.display = 'inline-block';
                     companyStamp.style.left = '150px'; companyStamp.style.top = '80px';
                     stampWidth.value = '150'; companyStamp.style.width = '150px';
-                    saveStamp(); makeDraggable(companyStamp);
+                    saveStampState(); makeDraggable(companyStamp);
                 }; r.readAsDataURL(f);
             } else alert('仅支持PNG/JPG');
             stampInput.value = '';
         };
         removeStampBtn.onclick = () => {
             companyStamp.removeAttribute('src'); companyStamp.style.display = 'none';
-            localStorage.removeItem('stampImg'); localStorage.removeItem('stampPos');
+            localStorage.removeItem('stampImg'); localStorage.removeItem('stampPos'); localStorage.removeItem('stampW');
         };
-        applyStampSize.onclick = () => { companyStamp.style.width = stampWidth.value + 'px'; saveStamp(); };
+        applyStampSize.onclick = () => { companyStamp.style.width = stampWidth.value + 'px'; saveStampState(); };
 
         importFullImageBtn.onclick = () => fullImageInput.click();
         fullImageInput.onchange = e => {
@@ -612,11 +706,20 @@
                     let img = new Image(); img.onload = () => {
                         normalContent.style.display = 'none';
                         imageModeContainer.style.display = 'block';
-                        controlBar.style.display = 'flex';
+                        document.getElementById('imageControlBarExternal').style.display = 'flex';
                         let canvas = imageCanvas, ctx = canvas.getContext('2d');
                         let scale = Math.min(1, (imageModeContainer.clientWidth-20) / img.width);
                         canvas.width = img.width * scale; canvas.height = img.height * scale;
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        // 移动品牌图和公司章到背景图容器内并居中
+                        [brandImage, companyStamp].forEach(el => {
+                            if (el.style.display !== 'none') {
+                                imageModeContainer.appendChild(el);
+                                el.style.left = (canvas.width/2 - parseFloat(el.style.width)/2) + 'px';
+                                el.style.top = (canvas.height/2 - parseFloat(el.style.width)/2) + 'px';
+                                makeDraggable(el);
+                            }
+                        });
                     }; img.src = ev.target.result;
                 }; r.readAsDataURL(f);
             } else alert('仅支持图片文件');
@@ -625,56 +728,64 @@
         closeImageModeBtn.onclick = () => {
             normalContent.style.display = 'block';
             imageModeContainer.style.display = 'none';
-            controlBar.style.display = 'none';
+            document.getElementById('imageControlBarExternal').style.display = 'none';
+            // 将图片移回原容器
+            [brandImage, companyStamp].forEach(el => {
+                if (el.style.display !== 'none') {
+                    document.getElementById('invoiceContainer').appendChild(el);
+                    makeDraggable(el);
+                }
+            });
         };
-        rotateLeftBtn.onclick = () => { /* 旋转功能可自行扩展 */ };
-        rotateRightBtn.onclick = () => { /* 旋转功能可自行扩展 */ };
+        rotateLeftBtn.onclick = () => { /* 扩展旋转 */ };
+        rotateRightBtn.onclick = () => { /* 扩展旋转 */ };
 
         restoreBrand(); restoreStamp();
     }
 
-    // ==================== 导出 ====================
-    async function cloneForExport(wmText) {
+    // ===================== 导出 =====================
+    async function getExportClone(watermarkText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
         clone.querySelector('#imageModeContainer').style.display = 'none';
         clone.querySelector('#imageControlBarExternal')?.remove();
         clone.querySelector('#normalContent').style.display = 'block';
         clone.querySelector('#editRemarkBtn')?.remove();
-        if (wmText) {
-            let wm = document.createElement('div');
-            wm.className = 'watermark-layer';
-            wm.style.backgroundImage = `url(${createWatermarkDataURL(wmText)})`;
-            clone.style.position = 'relative';
-            clone.appendChild(wm);
+        if (watermarkText) {
+            let wm = document.createElement('div'); wm.className = 'watermark-layer';
+            wm.style.backgroundImage = `url(${createWatermarkDataURL(watermarkText)})`;
+            clone.style.position = 'relative'; clone.appendChild(wm);
         }
+        clone.style.transform = 'none'; // 移除缩放效果
         return clone;
     }
+
     async function exportAsImage() {
         let btn = saveAsImageBtn; btn.disabled = true; btn.innerText = '生成中...';
         try {
             let wm = await askWatermark();
-            let clone = await cloneForExport(wm);
+            let clone = await getExportClone(wm);
             clone.style.position = 'absolute'; clone.style.left = '-9999px'; document.body.appendChild(clone);
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 150));
             let canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#fff', logging: false });
             document.body.removeChild(clone);
             let data = canvas.toDataURL('image/png');
             let name = `销售单_${invoiceNo.innerText}.png`;
-            if (!saveFileNative(data, name, 'image/png')) {
+            if (!nativeSaveFile(data, name, 'image/png')) {
                 let a = document.createElement('a'); a.download = name; a.href = data; a.click();
             }
             showToast('图片已保存');
-        } catch(e) { alert('出错：'+e.message); }
+        } catch(e) { alert('生成图片失败: '+e.message); }
         finally { btn.disabled = false; btn.innerText = '📷 保存为图片'; }
     }
+
     async function exportPDF() {
         let btn = downloadPdfBtn; btn.disabled = true; btn.innerText = '生成PDF...';
         try {
             let wm = await askWatermark();
-            let clone = await cloneForExport(wm);
+            let clone = await getExportClone(wm);
             clone.style.position = 'absolute'; clone.style.left = '-9999px'; document.body.appendChild(clone);
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 150));
             let canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#fff', logging: false });
             document.body.removeChild(clone);
             let { jsPDF } = window.jspdf;
@@ -683,86 +794,65 @@
             let ratio = w / canvas.width;
             pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, canvas.height * ratio);
             let name = `销售单_${invoiceNo.innerText}.pdf`;
-            if (!saveFileNative(pdf.output('datauristring'), name, 'application/pdf')) {
+            if (!nativeSaveFile(pdf.output('datauristring'), name, 'application/pdf')) {
                 pdf.save(name);
             }
             showToast('PDF已保存');
-        } catch(e) { alert('出错：'+e.message); }
+        } catch(e) { alert('生成PDF失败: '+e.message); }
         finally { btn.disabled = false; btn.innerText = '📄 下载 PDF'; }
     }
+
     async function printInvoice() {
         let btn = printBtn; btn.disabled = true; btn.innerText = '准备打印...';
         try {
             let wm = await askWatermark();
-            let clone = await cloneForExport(wm);
+            let clone = await getExportClone(wm);
             clone.style.position = 'absolute'; clone.style.left = '-9999px'; document.body.appendChild(clone);
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 150));
             let canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#fff', logging: false });
             document.body.removeChild(clone);
-            if (!printNative(canvas.toDataURL('image/png'))) {
+            if (!nativePrintBase64(canvas.toDataURL('image/png'))) {
                 window.print();
             }
-        } catch(e) { alert('出错：'+e.message); }
+        } catch(e) { alert('打印失败: '+e.message); }
         finally { btn.disabled = false; btn.innerText = '🖨️ 打印销售单'; }
     }
 
-    // ==================== 事件绑定 ====================
+    // ===================== 事件绑定 =====================
     function bindEvents() {
-        addItemBtn.onclick = () => {
-            let name = prodName.value.trim(); if (!name) { alert('输入商品名称'); return; }
-            items.push({ name, unit: prodUnit.value || '个', qty: parseFloat(prodQty.value)||1, price: parseFloat(prodPrice.value)||0, remark: prodRemark.value });
-            if (items.length === 1) selectedIndex = 0;
-            renderTable(); prodName.value = ''; prodRemark.value = '';
-        };
-        clearAllBtn.onclick = () => { items = []; selectedIndex = -1; renderTable(); };
-        moveUpBtn.onclick = () => { if (selectedIndex > 0) { [items[selectedIndex], items[selectedIndex-1]] = [items[selectedIndex-1], items[selectedIndex]]; selectedIndex--; renderTable(); } };
-        moveDownBtn.onclick = () => { if (selectedIndex < items.length-1) { [items[selectedIndex], items[selectedIndex+1]] = [items[selectedIndex+1], items[selectedIndex]]; selectedIndex++; renderTable(); } };
-        deleteSelectedBtn.onclick = () => { if (selectedIndex >= 0 && confirm('删除？')) { items.splice(selectedIndex, 1); selectedIndex = -1; renderTable(); } };
-        loadEditBtn.onclick = () => {
-            if (selectedIndex < 0) { alert('请先点击表格序号选中商品'); return; }
-            let it = items[selectedIndex]; prodName.value = it.name; prodUnit.value = it.unit; prodQty.value = it.qty; prodPrice.value = it.price; prodRemark.value = it.remark || '';
-        };
-        saveEditBtn.onclick = () => {
-            if (selectedIndex < 0) { alert('请先选中要修改的商品'); return; }
-            items[selectedIndex] = { name: prodName.value, unit: prodUnit.value||'个', qty: parseFloat(prodQty.value)||1, price: parseFloat(prodPrice.value)||0, remark: prodRemark.value };
-            renderTable(); showToast('已修改');
-        };
-        editRemarkBtn.onclick = () => { let v = prompt('编辑备注', remarkText.innerText); if (v !== null) remarkText.innerText = v || '—'; save(); };
+        addItemBtn.onclick = addManual;
+        clearAllBtn.onclick = clearAll;
+        moveUpBtn.onclick = moveUp; moveDownBtn.onclick = moveDown;
+        deleteSelectedBtn.onclick = deleteSelected;
+        loadEditBtn.onclick = loadSelectedToForm; saveEditBtn.onclick = saveEditToSelected;
+        editRemarkBtn.onclick = () => { let v = prompt('编辑备注', remarkText.innerText); if (v !== null) remarkText.innerText = v.trim() || '—'; saveData(); };
         [editCompany, editPhone, editContact, editSigner, editCustomer].forEach(el => el.addEventListener('input', syncInfo));
         saveAsImageBtn.onclick = exportAsImage;
         downloadPdfBtn.onclick = exportPDF;
         printBtn.onclick = printInvoice;
-        parseBtn.onclick = () => {
-            let lines = batchRawInput.value.split('\n').filter(l => l.trim());
-            let res = lines.map(l => {
-                let m = l.match(/(.+?)\s+(\d+(?:\.\d+)?)\s*([\u4e00-\u9fa5]{1,3})?\s+(\d+)$/);
-                if (m) return { name: m[1], qty: parseFloat(m[2]), unit: m[3] || '个', price: parseFloat(m[4]) };
-                return null;
-            }).filter(Boolean);
-            parsePreview.innerHTML = res.length ? res.map(r => `<span class="preview-item">${r.name} ${r.qty}${r.unit} ¥${r.price}</span>`).join('') : '⚠️ 未识别';
-            window._batchBuffer = res;
-        };
-        confirmAddBatchBtn.onclick = () => {
-            if (!window._batchBuffer?.length) { alert('请先解析'); return; }
-            window._batchBuffer.forEach(r => items.push({ ...r, remark: '' }));
-            window._batchBuffer = null; parsePreview.innerHTML = '✅ 已添加'; renderTable();
-        };
+        parseBtn.onclick = parseBatch;
+        confirmAddBatchBtn.onclick = confirmAddBatch;
     }
 
-    // 标签切换
-    document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => {
-        document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
-        b.classList.add('active');
-        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active-pane'));
-        document.getElementById('tab-' + b.dataset.tab).classList.add('active-pane');
-    });
+    function initTabs() {
+        document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => {
+            document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
+            b.classList.add('active');
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active-pane'));
+            document.getElementById('tab-' + b.dataset.tab).classList.add('active-pane');
+        });
+    }
 
     // 启动
-    setMeta();
+    setInvoiceMeta();
+    initTabs();
     bindEvents();
     initImageControls();
-    if (!load()) { items = [{ name: '示例商品', unit: '个', qty: 1, price: 0, remark: '' }]; selectedIndex = 0; renderTable(); }
-    else renderTable();
+    if (!loadData()) {
+        items = [{ name: '示例商品', unit: '个', qty: 1, price: 0.00, remark: '' }];
+        selectedIndex = 0; renderTable();
+    }
+    resizeApp();
     if (isAndroidApp) { try { AndroidBridge.onPageLoaded(); } catch(e) {} }
 </script>
 </body>
