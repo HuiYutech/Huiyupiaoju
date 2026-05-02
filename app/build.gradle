@@ -3,7 +3,7 @@ apply plugin: 'com.android.application'
 android {
     compileSdk 34
     defaultConfig {
-        applicationId "com.example.salesinvoice"
+        applicationId "com.huiyu.receipt"
         minSdk 21
         targetSdk 34
         versionCode 1
