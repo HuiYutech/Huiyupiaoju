@@ -1,9 +1,12 @@
 apply plugin: 'com.android.application'
 
 android {
+    // ✅ 显式声明 namespace，解决 AGP 8.0+ 缺少 namespace 错误
+    namespace 'com.huiyu.receipt'
+
     compileSdk 34
     defaultConfig {
-        applicationId "com.huiyu.receipt"
+        applicationId 'com.huiyu.receipt'
         minSdk 21
         targetSdk 34
         versionCode 1
