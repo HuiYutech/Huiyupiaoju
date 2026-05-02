@@ -2,9 +2,6 @@ name: Android Build (慧语电子票据)
 
 on:
  workflow_dispatch:   # 仅在手动触发时运行
-  push:
-    branches: [ main ]
-  workflow_dispatch:   # 允许手动触发构建
 
 jobs:
   build:
