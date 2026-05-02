@@ -17,11 +17,11 @@
             -webkit-tap-highlight-color: transparent;
         }
         body {
-            background: #eef2f5;         /* 保留原有灰色背景 */
+            background: #eef2f5;
             font-family: 'Segoe UI', 'PingFang SC', '微软雅黑', Roboto, sans-serif;
             margin: 0;
             padding: 0;
-            overflow-x: hidden;           /* 手机缩放后无横向滚动条 */
+            overflow-x: hidden;
             display: flex;
             justify-content: center;
             align-items: flex-start;
@@ -29,18 +29,17 @@
         }
         #app-wrapper {
             width: var(--app-width);
-            transform-origin: top center;  /* 居中缩放，视觉铺满且无偏移 */
-            padding: 10px 6px 30px 6px;
+            transform-origin: top center;
+            padding: 10px 0 30px 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin: 0 auto;               /* 电脑端居中，手机端JS会置0 */
+            margin: 0 auto;
         }
         .invoice-container,
         .control-panel,
         .btn-group {
-            width: 100%;
-            max-width: var(--app-width);
+            width: var(--app-width);
         }
         .invoice-container {
             position: relative;
@@ -360,20 +359,19 @@
 </div>
 
 <script>
-    // ===================== 动态缩放（手机铺满无留白，电脑端原样显示） =====================
+    // ===================== 动态缩放 =====================
     const APP_WIDTH = 794;
     const wrapper = document.getElementById('app-wrapper');
     function resizeApp() {
-        const windowWidth = window.innerWidth;
-        if (windowWidth < APP_WIDTH) {
-            const scale = windowWidth / APP_WIDTH;
+        const w = window.innerWidth;
+        if (w < APP_WIDTH) {
+            const scale = w / APP_WIDTH;
             wrapper.style.transform = `scale(${scale})`;
-            wrapper.style.margin = '0';          // 清除 auto，铺满
-            // 高度补偿，避免缩放后下方多余空白
+            wrapper.style.margin = '0';
             wrapper.style.marginBottom = `-${wrapper.offsetHeight * (1 - scale)}px`;
         } else {
             wrapper.style.transform = 'none';
-            wrapper.style.margin = '0 auto';    // 电脑端居中
+            wrapper.style.margin = '0 auto';
             wrapper.style.marginBottom = '0';
         }
     }
@@ -382,28 +380,25 @@
     window.addEventListener('load', () => setTimeout(resizeApp, 50));
     document.addEventListener('DOMContentLoaded', () => setTimeout(resizeApp, 50));
 
-    // ===================== Android 桥接 =====================
+    // ===================== Android Bridge =====================
     const isAndroidApp = typeof AndroidBridge !== 'undefined' && AndroidBridge !== null;
     function showToast(msg) {
         if (isAndroidApp) { try { AndroidBridge.showToast(msg); } catch(e) {} }
         let toast = document.getElementById('globalToast');
         if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'globalToast';
-            toast.className = 'toast-msg';
+            toast = document.createElement('div'); toast.id = 'globalToast'; toast.className = 'toast-msg';
             document.body.appendChild(toast);
         }
-        toast.textContent = msg;
-        toast.classList.add('show');
+        toast.textContent = msg; toast.classList.add('show');
         clearTimeout(toast._timeout);
         toast._timeout = setTimeout(() => toast.classList.remove('show'), 2000);
     }
-    function nativeSaveFile(base64, fileName, mimeType) {
-        if (isAndroidApp) { try { AndroidBridge.saveFile(base64, fileName, mimeType); return true; } catch(e) {} }
+    function nativeSaveFile(b64, name, mime) {
+        if (isAndroidApp) { try { AndroidBridge.saveFile(b64, name, mime); return true; } catch(e) {} }
         return false;
     }
-    function nativePrintBase64(base64) {
-        if (isAndroidApp) { try { AndroidBridge.printBase64(base64); return true; } catch(e) {} }
+    function nativePrintBase64(b64) {
+        if (isAndroidApp) { try { AndroidBridge.printBase64(b64); return true; } catch(e) {} }
         return false;
     }
 
@@ -411,15 +406,14 @@
     let lastWatermark = localStorage.getItem('lastWatermark_v2') || '';
     function askWatermark() {
         return new Promise(resolve => {
-            if (!confirm('是否添加防伪水印？\n点击“确定”添加，取消则不添加。')) { resolve(null); return; }
+            if (!confirm('是否添加防伪水印？')) { resolve(null); return; }
             let def = lastWatermark || 'XX公司收款专用2026';
             let inp = prompt('请输入水印文字（最多18个字符）:', def);
             if (inp === null) { resolve(null); return; }
             let t = inp.trim();
-            if (!t) { alert('水印内容不能为空，将不添加水印。'); resolve(null); return; }
-            if (t.length > 18) { alert('水印文字超过18个字符，请重新输入。'); resolve(null); return; }
-            localStorage.setItem('lastWatermark_v2', t);
-            lastWatermark = t;
+            if (!t) { alert('水印内容不能为空'); resolve(null); return; }
+            if (t.length > 18) { alert('最多18个字符'); resolve(null); return; }
+            localStorage.setItem('lastWatermark_v2', t); lastWatermark = t;
             resolve(t);
         });
     }
@@ -427,7 +421,7 @@
         let c = document.createElement('canvas'), s = 200;
         c.width = s; c.height = s;
         let ctx = c.getContext('2d');
-        ctx.font = 'bold 20px "PingFang SC", "微软雅黑"';
+        ctx.font = 'bold 20px "PingFang SC","微软雅黑"';
         ctx.fillStyle = '#7f8c8d';
         ctx.translate(s/2, s/2);
         ctx.rotate(-28 * Math.PI / 180);
@@ -437,20 +431,17 @@
     }
 
     // ===================== 业务数据 =====================
-    let items = [];
-    let selectedIndex = -1;
+    let items = [], selectedIndex = -1;
     const STORAGE_KEY = 'SmartSalesInvoiceData_v2';
-    const STANDARD_UNITS = new Set(['个','台','套','根','件','只','条','支','箱','包','瓶','盒','桶','双','对','米','千克','公斤','克','升','毫升','袋','卷','组','部','块','片','张','把','粒','罐','打','份','册','本','辆','架','顶','副','串','捆','扎','排','座','栋','扇','盏','枚','轴','码','英尺','英寸','厘米','毫米','GB','TB']);
+    const UNITS = new Set(['个','台','套','根','件','只','条','支','箱','包','瓶','盒','桶','双','对','米','千克','公斤','克','升','毫升','袋','卷','组','部','块','片','张','把','粒','罐','打','份','册','本','辆','架','顶','副','串','捆','扎','排','座','栋','扇','盏','枚','轴','码','英尺','英寸','厘米','毫米','GB','TB']);
 
     function saveData() {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                items, selectedIndex,
-                company: editCompany.value, phone: editPhone.value,
-                contact: editContact.value, signer: editSigner.value,
-                customer: editCustomer.value, remark: remarkText.innerText
-            }));
-        } catch(e) {}
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            items, selectedIndex,
+            company: editCompany.value, phone: editPhone.value,
+            contact: editContact.value, signer: editSigner.value,
+            customer: editCustomer.value, remark: remarkText.innerText
+        })); } catch(e) {}
     }
     function loadData() {
         let raw = localStorage.getItem(STORAGE_KEY);
@@ -464,7 +455,6 @@
             syncInfo(); renderTable(); return true;
         } catch(e) { return false; }
     }
-
     function syncInfo() {
         document.querySelector('.company-title').innerText = editCompany.value || '销售单';
         document.querySelector('.sub-title').innerHTML = `联系电话：${editPhone.value || ''} &nbsp;|&nbsp; 联系人：${editContact.value || ''}`;
@@ -472,15 +462,12 @@
         customerNameDisplay.innerText = editCustomer.value || '';
         saveData();
     }
-
     function setInvoiceMeta() {
         let d = new Date();
         let y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
-        let hours = String(d.getHours()).padStart(2,'0'), minutes = String(d.getMinutes()).padStart(2,'0');
-        headerInvoiceDate.innerText = `${y}-${m}-${day} ${hours}:${minutes}`;
+        headerInvoiceDate.innerText = `${y}-${m}-${day} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
         invoiceNo.innerText = `XS-${y}${m}${day}-${Math.floor(Math.random()*1000)}`;
     }
-
     function convertCurrency(money) {
         if (isNaN(money)) return '零元整';
         let num = Math.round(parseFloat(money)*100)/100;
@@ -495,9 +482,7 @@
         }
         return s + '元' + (Math.round(num*100)%100 === 0 ? '整' : '');
     }
-
     function getSubtotal() { return items.reduce((s, i) => s + i.qty * i.price, 0); }
-
     function updateTotal() {
         let sub = getSubtotal();
         amountTotal.innerText = sub.toFixed(2);
@@ -505,7 +490,6 @@
         updateButtonsState();
         saveData();
     }
-
     function renderTable() {
         let tbody = tableBody; tbody.innerHTML = '';
         if (!items.length) {
@@ -530,17 +514,14 @@
         });
         updateTotal(); updateButtonsState(); saveData();
     }
-
     function updateButtonsState() {
         moveUpBtn.classList.toggle('disabled', selectedIndex <= 0);
         moveDownBtn.classList.toggle('disabled', selectedIndex < 0 || selectedIndex >= items.length - 1);
         deleteSelectedBtn.classList.toggle('disabled', selectedIndex < 0);
     }
-
     function moveUp() { if (selectedIndex > 0) { [items[selectedIndex-1], items[selectedIndex]] = [items[selectedIndex], items[selectedIndex-1]]; selectedIndex--; renderTable(); } }
     function moveDown() { if (selectedIndex < items.length-1) { [items[selectedIndex+1], items[selectedIndex]] = [items[selectedIndex], items[selectedIndex+1]]; selectedIndex++; renderTable(); } }
     function deleteSelected() { if (selectedIndex >= 0 && confirm(`删除「${items[selectedIndex].name}」?`)) { items.splice(selectedIndex, 1); selectedIndex = -1; renderTable(); } }
-
     function addManual() {
         let name = prodName.value.trim(); if (!name) { alert('请输入商品名称'); return; }
         items.push({ name, unit: prodUnit.value || '个', qty: parseFloat(prodQty.value)||1, price: parseFloat(prodPrice.value)||0, remark: prodRemark.value });
@@ -566,10 +547,10 @@
         let qtyUnitMatch = rest.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z\u4e00-\u9fa5]{1,4})$/);
         if (qtyUnitMatch) {
             let tmpQty = parseFloat(qtyUnitMatch[1]), tmpUnit = qtyUnitMatch[2];
-            if (tmpQty > 0 && STANDARD_UNITS.has(tmpUnit)) { qty = tmpQty; unit = tmpUnit; name = rest.substring(0, rest.length - qtyUnitMatch[0].length).trim(); }
+            if (tmpQty > 0 && UNITS.has(tmpUnit)) { qty = tmpQty; unit = tmpUnit; name = rest.substring(0, rest.length - qtyUnitMatch[0].length).trim(); }
         }
         if (!name) name = rest;
-        for (let u of STANDARD_UNITS) if (name.endsWith(u)) { name = name.substring(0, name.length - u.length).trim(); break; }
+        for (let u of UNITS) if (name.endsWith(u)) { name = name.substring(0, name.length - u.length).trim(); break; }
         if (name === "") name = "商品";
         let unitPrice = Math.round((totalPrice / qty) * 100) / 100;
         return { name, unit, qty, price: unitPrice };
@@ -588,7 +569,7 @@
         batchRawInput.value = '';
     }
 
-    // ===================== 图片拖拽与管理 =====================
+    // ===================== 图片拖拽管理 =====================
     function makeDraggable(el) {
         if (!el) return;
         let drag = false, startX, startY, startL, startT;
@@ -607,7 +588,6 @@
             else if (el.id === 'companyStamp') saveStampState();
         };
         const onEnd = () => { drag = false; el.classList.remove('dragging'); document.body.style.userSelect = ''; document.body.style.webkitUserSelect = ''; };
-
         el.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX, e.clientY); });
         el.addEventListener('touchstart', e => { e.preventDefault(); let t = e.touches[0]; onStart(t.clientX, t.clientY); }, { passive: false });
         window.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
@@ -615,7 +595,6 @@
         window.addEventListener('touchmove', e => { if (drag) { e.preventDefault(); let t = e.touches[0]; onMove(t.clientX, t.clientY); } }, { passive: false });
         window.addEventListener('touchend', onEnd);
     }
-
     function saveBrandState() {
         let b = brandImage;
         if (b.src && b.style.display !== 'none') {
@@ -654,7 +633,6 @@
             makeDraggable(companyStamp);
         }
     }
-
     function initImageControls() {
         uploadBrandBtn.onclick = () => brandInput.click();
         brandInput.onchange = e => {
@@ -734,9 +712,8 @@
                 }
             });
         };
-        rotateLeftBtn.onclick = () => { /* 扩展旋转 */ };
-        rotateRightBtn.onclick = () => { /* 扩展旋转 */ };
-
+        rotateLeftBtn.onclick = () => { /* 可扩展旋转 */ };
+        rotateRightBtn.onclick = () => { /* 可扩展旋转 */ };
         restoreBrand(); restoreStamp();
     }
 
@@ -756,7 +733,6 @@
         clone.style.transform = 'none';
         return clone;
     }
-
     async function exportAsImage() {
         let btn = saveAsImageBtn; btn.disabled = true; btn.innerText = '生成中...';
         try {
@@ -775,7 +751,6 @@
         } catch(e) { alert('生成图片失败: '+e.message); }
         finally { btn.disabled = false; btn.innerText = '📷 保存为图片'; }
     }
-
     async function exportPDF() {
         let btn = downloadPdfBtn; btn.disabled = true; btn.innerText = '生成PDF...';
         try {
@@ -798,7 +773,6 @@
         } catch(e) { alert('生成PDF失败: '+e.message); }
         finally { btn.disabled = false; btn.innerText = '📄 下载 PDF'; }
     }
-
     async function printInvoice() {
         let btn = printBtn; btn.disabled = true; btn.innerText = '准备打印...';
         try {
@@ -830,7 +804,6 @@
         parseBtn.onclick = parseBatch;
         confirmAddBatchBtn.onclick = confirmAddBatch;
     }
-
     function initTabs() {
         document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => {
             document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
