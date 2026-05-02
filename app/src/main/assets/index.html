@@ -8,7 +8,7 @@
     <script src="js/jspdf.umd.min.js"></script>
     <style>
         :root {
-            --app-width: 794px; /* 210mm ≈ 794px */
+            --app-width: 794px; /* 210mm */
         }
         * {
             box-sizing: border-box;
@@ -34,7 +34,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin: 0 auto;
+            margin: 0 auto;        /* 保持居中，缩放时也不移除 */
         }
         .invoice-container,
         .control-panel,
@@ -150,7 +150,7 @@
         }
         .tab-buttons {
             display: flex;
-            background: #f8fafc;
+            background: #f0f4f8;    /* 微调与背景区分 */
             border-bottom: 1px solid #e2edf2;
             overflow-x: auto;
         }
@@ -359,20 +359,89 @@
 </div>
 
 <script>
+    // ===================== 获取所有 DOM 元素（安全引用，避免全局变量丢失） =====================
+    const appWrapper = document.getElementById('app-wrapper');
+    const normalContent = document.getElementById('normalContent');
+    const brandImage = document.getElementById('brandImage');
+    const companyStamp = document.getElementById('companyStamp');
+    const imageModeContainer = document.getElementById('imageModeContainer');
+    const imageCanvas = document.getElementById('imageCanvas');
+    const controlBar = document.getElementById('imageControlBarExternal');
+
+    // 表格相关
+    const tableBody = document.getElementById('tableBody');
+    const amountCN = document.getElementById('amountCN');
+    const amountTotal = document.getElementById('amountTotal');
+    const invoiceNo = document.getElementById('invoiceNo');
+    const headerInvoiceDate = document.getElementById('headerInvoiceDate');
+    const customerNameDisplay = document.getElementById('customerNameDisplay');
+    const signerName = document.getElementById('signerName');
+    const remarkText = document.getElementById('remarkText');
+
+    // 基本资料
+    const editCompany = document.getElementById('editCompany');
+    const editPhone = document.getElementById('editPhone');
+    const editContact = document.getElementById('editContact');
+    const editSigner = document.getElementById('editSigner');
+    const editCustomer = document.getElementById('editCustomer');
+
+    // 编辑商品
+    const prodName = document.getElementById('prodName');
+    const prodUnit = document.getElementById('prodUnit');
+    const prodQty = document.getElementById('prodQty');
+    const prodPrice = document.getElementById('prodPrice');
+    const prodRemark = document.getElementById('prodRemark');
+    const addItemBtn = document.getElementById('addItemBtn');
+    const loadEditBtn = document.getElementById('loadEditBtn');
+    const saveEditBtn = document.getElementById('saveEditBtn');
+    const moveUpBtn = document.getElementById('moveUpBtn');
+    const moveDownBtn = document.getElementById('moveDownBtn');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const editRemarkBtn = document.getElementById('editRemarkBtn');
+
+    // 商标管理
+    const uploadBrandBtn = document.getElementById('uploadBrandBtn');
+    const removeBrandBtn = document.getElementById('removeBrandBtn');
+    const brandWidth = document.getElementById('brandWidth');
+    const applyBrandSize = document.getElementById('applyBrandSize');
+    const brandInput = document.getElementById('brandInput');
+    const uploadStampBtn = document.getElementById('uploadStampBtn');
+    const removeStampBtn = document.getElementById('removeStampBtn');
+    const stampWidth = document.getElementById('stampWidth');
+    const applyStampSize = document.getElementById('applyStampSize');
+    const stampInput = document.getElementById('stampInput');
+    const importFullImageBtn = document.getElementById('importFullImageBtn');
+    const fullImageInput = document.getElementById('fullImageInput');
+    const closeImageModeBtn = document.getElementById('closeImageModeBtn');
+    const rotateLeftBtn = document.getElementById('rotateLeftBtn');
+    const rotateRightBtn = document.getElementById('rotateRightBtn');
+
+    // 批量解析
+    const batchRawInput = document.getElementById('batchRawInput');
+    const parsePreview = document.getElementById('parsePreview');
+    const parseBtn = document.getElementById('parseBtn');
+    const confirmAddBatchBtn = document.getElementById('confirmAddBatchBtn');
+
+    // 底部按钮
+    const saveAsImageBtn = document.getElementById('saveAsImageBtn');
+    const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+    const printBtn = document.getElementById('printBtn');
+
     // ===================== 动态缩放 =====================
     const APP_WIDTH = 794;
-    const wrapper = document.getElementById('app-wrapper');
     function resizeApp() {
         const w = window.innerWidth;
         if (w < APP_WIDTH) {
             const scale = w / APP_WIDTH;
-            wrapper.style.transform = `scale(${scale})`;
-            wrapper.style.margin = '0';
-            wrapper.style.marginBottom = `-${wrapper.offsetHeight * (1 - scale)}px`;
+            appWrapper.style.transform = `scale(${scale})`;
+            // 关键：保持 margin: 0 auto 居中，缩放不会导致靠左
+            appWrapper.style.margin = '0 auto';
+            appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
         } else {
-            wrapper.style.transform = 'none';
-            wrapper.style.margin = '0 auto';
-            wrapper.style.marginBottom = '0';
+            appWrapper.style.transform = 'none';
+            appWrapper.style.margin = '0 auto';
+            appWrapper.style.marginBottom = '0';
         }
     }
     window.addEventListener('resize', resizeApp);
@@ -491,16 +560,16 @@
         saveData();
     }
     function renderTable() {
-        let tbody = tableBody; tbody.innerHTML = '';
+        tableBody.innerHTML = '';
         if (!items.length) {
             selectedIndex = -1;
-            let row = tbody.insertRow(); row.insertCell().colSpan = 7;
+            let row = tableBody.insertRow(); row.insertCell().colSpan = 7;
             row.cells[0].style.textAlign = 'center'; row.cells[0].style.padding = '24px';
             row.cells[0].innerText = '✨ 暂无商品，请添加商品 ✨';
             updateTotal(); saveData(); return;
         }
         items.forEach((it, idx) => {
-            let row = tbody.insertRow();
+            let row = tableBody.insertRow();
             if (idx === selectedIndex) row.classList.add('selected-row');
             let seqCell = row.insertCell();
             seqCell.innerHTML = `<span class="clickable-seq">${idx+1}</span>`;
@@ -519,6 +588,8 @@
         moveDownBtn.classList.toggle('disabled', selectedIndex < 0 || selectedIndex >= items.length - 1);
         deleteSelectedBtn.classList.toggle('disabled', selectedIndex < 0);
     }
+
+    // 商品操作
     function moveUp() { if (selectedIndex > 0) { [items[selectedIndex-1], items[selectedIndex]] = [items[selectedIndex], items[selectedIndex-1]]; selectedIndex--; renderTable(); } }
     function moveDown() { if (selectedIndex < items.length-1) { [items[selectedIndex+1], items[selectedIndex]] = [items[selectedIndex], items[selectedIndex+1]]; selectedIndex++; renderTable(); } }
     function deleteSelected() { if (selectedIndex >= 0 && confirm(`删除「${items[selectedIndex].name}」?`)) { items.splice(selectedIndex, 1); selectedIndex = -1; renderTable(); } }
@@ -537,6 +608,7 @@
         renderTable(); showToast('商品已修改');
     }
 
+    // 批量解析
     let parsedBuffer = [];
     function parseProductLine(line) {
         line = line.trim(); if (!line) return null;
@@ -569,7 +641,7 @@
         batchRawInput.value = '';
     }
 
-    // ===================== 图片拖拽管理 =====================
+    // ===================== 图片拖拽存储 =====================
     function makeDraggable(el) {
         if (!el) return;
         let drag = false, startX, startY, startL, startT;
@@ -584,8 +656,8 @@
             if (!drag) return;
             el.style.left = (startL + x - startX) + 'px';
             el.style.top = (startT + y - startY) + 'px';
-            if (el.id === 'brandImage') saveBrandState();
-            else if (el.id === 'companyStamp') saveStampState();
+            if (el === brandImage) saveBrandState();
+            else if (el === companyStamp) saveStampState();
         };
         const onEnd = () => { drag = false; el.classList.remove('dragging'); document.body.style.userSelect = ''; document.body.style.webkitUserSelect = ''; };
         el.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX, e.clientY); });
@@ -595,11 +667,11 @@
         window.addEventListener('touchmove', e => { if (drag) { e.preventDefault(); let t = e.touches[0]; onMove(t.clientX, t.clientY); } }, { passive: false });
         window.addEventListener('touchend', onEnd);
     }
+
     function saveBrandState() {
-        let b = brandImage;
-        if (b.src && b.style.display !== 'none') {
-            localStorage.setItem('brandImg', b.src);
-            localStorage.setItem('brandPos', JSON.stringify({ l: b.style.left, t: b.style.top }));
+        if (brandImage.src && brandImage.style.display !== 'none') {
+            localStorage.setItem('brandImg', brandImage.src);
+            localStorage.setItem('brandPos', JSON.stringify({ l: brandImage.style.left, t: brandImage.style.top }));
             localStorage.setItem('brandW', brandWidth.value);
         }
     }
@@ -615,10 +687,9 @@
         }
     }
     function saveStampState() {
-        let s = companyStamp;
-        if (s.src && s.style.display !== 'none') {
-            localStorage.setItem('stampImg', s.src);
-            localStorage.setItem('stampPos', JSON.stringify({ l: s.style.left, t: s.style.top }));
+        if (companyStamp.src && companyStamp.style.display !== 'none') {
+            localStorage.setItem('stampImg', companyStamp.src);
+            localStorage.setItem('stampPos', JSON.stringify({ l: companyStamp.style.left, t: companyStamp.style.top }));
             localStorage.setItem('stampW', stampWidth.value);
         }
     }
@@ -633,6 +704,7 @@
             makeDraggable(companyStamp);
         }
     }
+
     function initImageControls() {
         uploadBrandBtn.onclick = () => brandInput.click();
         brandInput.onchange = e => {
@@ -649,7 +721,7 @@
             brandInput.value = '';
         };
         removeBrandBtn.onclick = () => {
-            brandImage.removeAttribute('src'); brandImage.style.display = 'none';
+            brandImage.src = ''; brandImage.style.display = 'none';
             localStorage.removeItem('brandImg'); localStorage.removeItem('brandPos'); localStorage.removeItem('brandW');
         };
         applyBrandSize.onclick = () => { brandImage.style.width = brandWidth.value + 'px'; saveBrandState(); };
@@ -669,7 +741,7 @@
             stampInput.value = '';
         };
         removeStampBtn.onclick = () => {
-            companyStamp.removeAttribute('src'); companyStamp.style.display = 'none';
+            companyStamp.src = ''; companyStamp.style.display = 'none';
             localStorage.removeItem('stampImg'); localStorage.removeItem('stampPos'); localStorage.removeItem('stampW');
         };
         applyStampSize.onclick = () => { companyStamp.style.width = stampWidth.value + 'px'; saveStampState(); };
@@ -683,7 +755,7 @@
                     let img = new Image(); img.onload = () => {
                         normalContent.style.display = 'none';
                         imageModeContainer.style.display = 'block';
-                        document.getElementById('imageControlBarExternal').style.display = 'flex';
+                        controlBar.style.display = 'flex';
                         let canvas = imageCanvas, ctx = canvas.getContext('2d');
                         let scale = Math.min(1, (imageModeContainer.clientWidth-20) / img.width);
                         canvas.width = img.width * scale; canvas.height = img.height * scale;
@@ -704,7 +776,7 @@
         closeImageModeBtn.onclick = () => {
             normalContent.style.display = 'block';
             imageModeContainer.style.display = 'none';
-            document.getElementById('imageControlBarExternal').style.display = 'none';
+            controlBar.style.display = 'none';
             [brandImage, companyStamp].forEach(el => {
                 if (el.style.display !== 'none') {
                     document.getElementById('invoiceContainer').appendChild(el);
@@ -712,9 +784,11 @@
                 }
             });
         };
-        rotateLeftBtn.onclick = () => { /* 可扩展旋转 */ };
-        rotateRightBtn.onclick = () => { /* 可扩展旋转 */ };
-        restoreBrand(); restoreStamp();
+        rotateLeftBtn.onclick = () => { /* 扩展旋转 */ };
+        rotateRightBtn.onclick = () => { /* 扩展旋转 */ };
+
+        restoreBrand();
+        restoreStamp();
     }
 
     // ===================== 导出 =====================
@@ -734,7 +808,7 @@
         return clone;
     }
     async function exportAsImage() {
-        let btn = saveAsImageBtn; btn.disabled = true; btn.innerText = '生成中...';
+        saveAsImageBtn.disabled = true; saveAsImageBtn.innerText = '生成中...';
         try {
             let wm = await askWatermark();
             let clone = await getExportClone(wm);
@@ -745,14 +819,15 @@
             let data = canvas.toDataURL('image/png');
             let name = `销售单_${invoiceNo.innerText}.png`;
             if (!nativeSaveFile(data, name, 'image/png')) {
+                // 浏览器回退下载
                 let a = document.createElement('a'); a.download = name; a.href = data; a.click();
             }
             showToast('图片已保存');
         } catch(e) { alert('生成图片失败: '+e.message); }
-        finally { btn.disabled = false; btn.innerText = '📷 保存为图片'; }
+        finally { saveAsImageBtn.disabled = false; saveAsImageBtn.innerText = '📷 保存为图片'; }
     }
     async function exportPDF() {
-        let btn = downloadPdfBtn; btn.disabled = true; btn.innerText = '生成PDF...';
+        downloadPdfBtn.disabled = true; downloadPdfBtn.innerText = '生成PDF...';
         try {
             let wm = await askWatermark();
             let clone = await getExportClone(wm);
@@ -771,10 +846,10 @@
             }
             showToast('PDF已保存');
         } catch(e) { alert('生成PDF失败: '+e.message); }
-        finally { btn.disabled = false; btn.innerText = '📄 下载 PDF'; }
+        finally { downloadPdfBtn.disabled = false; downloadPdfBtn.innerText = '📄 下载 PDF'; }
     }
     async function printInvoice() {
-        let btn = printBtn; btn.disabled = true; btn.innerText = '准备打印...';
+        printBtn.disabled = true; printBtn.innerText = '准备打印...';
         try {
             let wm = await askWatermark();
             let clone = await getExportClone(wm);
@@ -786,7 +861,7 @@
                 window.print();
             }
         } catch(e) { alert('打印失败: '+e.message); }
-        finally { btn.disabled = false; btn.innerText = '🖨️ 打印销售单'; }
+        finally { printBtn.disabled = false; printBtn.innerText = '🖨️ 打印销售单'; }
     }
 
     // ===================== 事件绑定 =====================
