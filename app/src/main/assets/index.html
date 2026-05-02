@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>慧语电子票据</title>
+    <!-- 离线本地文件 -->
+    <script src="js/html2canvas.min.js"></script>
+    <script src="js/jspdf.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+        body { background: #eef2f5; font-family: 'Segoe UI', '微软雅黑', Roboto, sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; overflow-x: auto; }
+        .invoice-container { position: relative; width: 210mm; min-width: 210mm; background: white; box-shadow: 0 20px 35px rgba(0,0,0,0.1); border-radius: 20px; padding: 12mm 5mm 15mm 5mm; margin-bottom: 24px; overflow: visible; user-select: none; }
+        .normal-content { display: block; }
+        .image-mode-container { display: none; background: #f0f0f0; border-radius: 8px; text-align: center; position: relative; overflow: hidden; min-height: 100px; }
+        .image-mode-container canvas { display: block; margin: 0 auto; cursor: default; box-shadow: 0 0 0 1px rgba(0,0,0,0.1); background: #fff; }
+        .image-mode-container .brand-overlay,
+        .image-mode-container .company-stamp { position: absolute; z-index: 30; cursor: grab; user-select: none; touch-action: none; display: inline-block; }
+        .image-mode-container .brand-overlay.dragging,
+        .image-mode-container .company-stamp.dragging { cursor: grabbing; }
+        .image-control-bar-external { margin-top: 12px; display: flex; justify-content: center; align-items: center; gap: 12px; background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 40px; flex-wrap: wrap; }
+        .image-control-bar-external button { background: white; border: none; padding: 6px 14px; border-radius: 32px; font-size: 14px; cursor: pointer; font-weight: bold; }
+        .image-control-bar-external button:hover { background: #e0e0e0; }
+        .watermark-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10000; background-repeat: repeat; background-size: 220px 220px; opacity: 0.25; }
+        @media print { body { background: white; padding: 0; margin: 0; } .invoice-container { box-shadow: none; padding: 12mm 5mm 15mm 5mm; margin: 0 auto; border-radius: 0 !important; width: 210mm !important; min-width: 210mm !important; max-width: 210mm !important; overflow: visible !important; position: relative; } .btn-group, .control-panel, .remark-box button { display: none !important; } .brand-overlay, .company-stamp { opacity: 0.9 !important; display: inline-block !important; position: absolute !important; } .table-wrapper { overflow-x: visible !important; } .sales-table { width: 100% !important; min-width: 0 !important; table-layout: auto !important; } .sales-table th, .sales-table td { word-break: break-word !important; white-space: normal !important; } .watermark-layer { -webkit-print-color-adjust: exact; print-color-adjust: exact; opacity: 0.3; } }
+        .brand-overlay { position: absolute; z-index: 20; cursor: grab; height: auto; object-fit: contain; border-radius: 8px; opacity: 0.9; user-select: none; touch-action: none; }
+        .brand-overlay.dragging, .company-stamp.dragging { cursor: grabbing; opacity: 0.7; }
+        .company-stamp { position: absolute; object-fit: contain; opacity: 0.85; z-index: 9999; cursor: grab; background: transparent; pointer-events: auto; touch-action: none; left: auto; top: auto; right: auto; bottom: auto; display: none; }
+        .sign-line { position: relative; flex-shrink: 0; font-size: 14px; display: inline-block; padding: 4px 8px; white-space: nowrap; }
+        .control-panel { width: 210mm; min-width: 210mm; background: white; border-radius: 24px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); margin-bottom: 20px; border: 1px solid #e2edf2; overflow: hidden; }
+        .tab-buttons { display: flex; background: #f8fafc; border-bottom: 1px solid #e2edf2; }
+        .tab-btn { flex: 1; text-align: center; padding: 14px 0; background: transparent; border: none; font-size: 15px; font-weight: 600; color: #4a627a; cursor: pointer; transition: 0.2s; border-bottom: 3px solid transparent; }
+        .tab-btn.active { color: #2c7da0; border-bottom-color: #2c7da0; background: white; }
+        .tab-pane { display: none; padding: 24px; background: white; }
+        .tab-pane.active-pane { display: block; }
+        .info-edit-panel { display: flex; flex-wrap: wrap; gap: 16px 20px; align-items: flex-end; }
+        .info-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+        .info-field label { font-size: 14px; font-weight: 600; color: #4a627a; }
+        .info-field input { padding: 10px 14px; border-radius: 12px; border: 1px solid #cddfe7; font-size: 14px; background: white; outline: none; width: 100%; }
+        .add-remove-panel { display: flex; flex-direction: column; gap: 24px; }
+        .add-goods-form { background: #fefcf5; border-radius: 20px; padding: 20px; border: 1px solid #e9e5d5; }
+        .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+        .form-field { flex: 1; min-width: 100px; }
+        .form-field label { font-size: 14px; font-weight: 600; color: #4a627a; display: block; margin-bottom: 4px; }
+        .form-field input, .form-field select { width: 100%; padding: 10px 14px; border-radius: 32px; border: 1px solid #cddfe7; font-size: 14px; background: white; line-height: normal; }
+        .add-btn { background: #2c7da0; color: white; border: none; padding: 10px 24px; border-radius: 32px; font-weight: bold; cursor: pointer; height: 42px; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; font-size: 14px; }
+        .add-btn:hover { background: #1f5e7a; }
+        .action-buttons { background: #fefcf5; border-radius: 20px; padding: 20px; border: 1px solid #e9e5d5; display: flex; flex-direction: row; gap: 24px; align-items: stretch; }
+        .btn-group-row { flex: 1; display: flex; flex-direction: column; gap: 12px; background: #ffffff; border-radius: 16px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #edf2f7; }
+        .btn-group-title { font-size: 14px; font-weight: 700; color: #2c7da0; margin-bottom: 4px; border-left: 3px solid #2c7da0; padding-left: 10px; }
+        .btn-group-row .action-icon-btn, .btn-group-row .btn-sm { width: 100%; text-align: center; justify-content: center; margin: 0; }
+        .btn-sm { background: #2c7da0; border: none; color: white; padding: 8px 20px; border-radius: 32px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; }
+        .btn-sm-danger { background: #bc6c25; }
+        .btn-sm:hover { background: #1f5e7a; }
+        .btn-sm-danger:hover { background: #9e561a; }
+        .action-icon-btn { background: #eef2f7; border: 1px solid #cbd5e1; color: #1e4663; font-size: 14px; font-weight: 600; padding: 6px 16px; border-radius: 32px; cursor: pointer; transition: 0.2s; }
+        .action-icon-btn:hover { background: #e2e8f0; border-color: #2c7da0; }
+        .action-icon-btn.danger { color: #bc6c25; border-color: #f1d5b5; }
+        .action-icon-btn.danger:hover { background: #fff1e6; }
+        .action-icon-btn.disabled { opacity: 0.5; pointer-events: none; background: #f1f5f9; }
+        .img-manager-group { display: flex; flex-direction: column; gap: 24px; align-items: flex-start; }
+        .img-card { width: 100%; background: #f9fafb; padding: 16px 20px; border-radius: 20px; border: 1px solid #e2edf2; display: flex; flex-direction: column; gap: 12px; }
+        .img-card > div:first-child { font-size: 14px; font-weight: 600; margin-bottom: 0; }
+        .img-card .control-row { display: flex; flex-wrap: nowrap; gap: 12px; align-items: center; justify-content: flex-start; }
+        .size-control { display: inline-flex; align-items: center; gap: 8px; background: #f8fafc; padding: 5px 12px; border-radius: 32px; white-space: nowrap; }
+        .size-control input { width: 70px; padding: 4px 8px; border-radius: 20px; border: 1px solid #cddfe7; font-size: 14px; text-align: center; }
+        .batch-parse { background: #f9fafb; border-radius: 20px; padding: 20px; border: 1px solid #e2edf2; }
+        .batch-title { font-weight: 700; color: #1e4663; margin-bottom: 16px; font-size: 16px; }
+        .batch-textarea { width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid #cbd5e1; font-family: monospace; font-size: 14px; resize: vertical; background: white; min-height: 120px; }
+        .batch-preview { background: #ffffff; border-radius: 16px; margin-top: 16px; padding: 12px; border: 1px solid #e2e8f0; max-height: 200px; overflow-y: auto; }
+        .preview-item { background: #f1f5f9; border-radius: 40px; padding: 6px 14px; margin: 6px 0; font-size: 13px; display: inline-block; margin-right: 8px; }
+        .batch-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; }
+        .btn-outline { background: transparent; border: 1px solid #2c7da0; color: #2c7da0; padding: 6px 16px; border-radius: 32px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .table-wrapper { border-radius: 0; overflow-x: auto; border: 2px solid #1e2f3a; background: #fff; margin-top: 8px; }
+        .sales-table { width: 100%; border-collapse: collapse; font-size: 14px; font-family: 'Segoe UI', 'Consolas', monospace; min-width: 500px; }
+        .sales-table th, .sales-table td { border: 2px solid #1e2f3a; padding: 8px 6px; vertical-align: middle; text-align: center; }
+        .sales-table th:nth-child(1) { width: 45px; }
+        .sales-table th:nth-child(2) { width: auto; }
+        .sales-table th:nth-child(3) { width: 60px; }
+        .sales-table th:nth-child(4) { width: 70px; }
+        .sales-table th:nth-child(5) { width: 100px; white-space: nowrap; }
+        .sales-table th:nth-child(6) { width: 90px; }
+        .sales-table th:nth-child(7) { width: auto; }
+        .sales-table td:nth-child(5) { white-space: nowrap; }
+        .sales-table th { background-color: #e6eaef; font-weight: 800; }
+        .clickable-seq { cursor: pointer; background-color: #f0f7ff; font-weight: 600; }
+        .clickable-seq:hover { background-color: #d9e8ff; }
+        .selected-row td:first-child { background-color: #cce5ff; font-weight: bold; }
+        .selected-row { background-color: #f0f7ff; }
+        .header-info { text-align: center; margin-bottom: 12px; }
+        .company-title { font-size: 24px; font-weight: 800; color: #0b3b4f; margin-bottom: 4px; }
+        .sub-title { font-size: 13px; color: #2c3e50; }
+        .title-divider { border-bottom: 2px solid #1a4d6b; margin-bottom: 12px; }
+        .meta-row { display: flex; justify-content: space-between; align-items: center; background: #f4f7fa; padding: 8px 15px; border-radius: 12px; margin: 12px 0 12px 0; font-size: 13px; font-weight: 500; border: 1px solid #bac8d3; gap: 12px; flex-wrap: nowrap; }
+        .meta-item { display: flex; align-items: center; gap: 6px; }
+        .meta-item:first-child { flex: 5; min-width: 0; }
+        .static-text { background: white; padding: 4px 12px; border-radius: 28px; border: 1px solid #b9cad6; color: #1f3b4c; white-space: nowrap; font-size: 13px; font-weight: 500; }
+        #customerNameDisplay { font-size: 15px; padding: 5px 16px; }
+        .total-row { margin-top: 16px; background: #f8f9fc; padding: 10px 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid #dce5ec; flex-wrap: nowrap; }
+        .total-left { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+        .total-left strong { font-size: 13px; color: #2c3e50; white-space: nowrap; }
+        .amount-chinese { font-size: 16px; font-weight: 700; color: #1e4663; background: white; padding: 3px 12px; border-radius: 28px; border: 1px solid #cbdbe0; font-family: '楷体', 'Microsoft YaHei', monospace; white-space: nowrap; }
+        .total-right { font-size: 20px; color: #c0392b; background: white; padding: 3px 15px; border-radius: 40px; font-family: monospace; font-weight: 800; border: 1px solid #d1d9e0; white-space: nowrap; }
+        .sign-stamp { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; border-top: 2px solid #3c5a6f; padding-top: 16px; gap: 16px; flex-wrap: wrap; }
+        .sign-left { flex-shrink: 0; text-align: left; }
+        .sign-center { flex: 1; text-align: center; white-space: nowrap; }
+        .sign-right { flex-shrink: 0; text-align: right; white-space: nowrap; }
+        .sign-note { font-size: 12px; color: #4a5568; letter-spacing: 1px; }
+        .sign-invoice-no { font-weight: 500; color: #1f3b4c; font-size: 13px; white-space: nowrap; }
+        .remark-box { background: #f8f9fc; padding: 8px 15px; border-radius: 12px; margin: 14px 0 4px; font-size: 13px; border: 1px solid #dce5ec; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; width: 100%; box-sizing: border-box; min-height: 44px; line-height: 1.4; }
+        .remark-box strong { flex-shrink: 0; white-space: nowrap; }
+        .remark-box span { word-break: break-word; white-space: normal; line-height: 1.4; }
+        .remark-box button { background: transparent; color: #b45f1b; font-size: 11px; padding: 3px 10px; border: 1px solid #e2b87a; border-radius: 40px; cursor: pointer; flex-shrink: 0; }
+        .remark-box button:hover { background: #fff1e6; }
+        
+        .btn-group { display: flex; justify-content: center; align-items: center; gap: 24px; flex-wrap: wrap; width: 210mm; min-width: 210mm; margin: 20px auto 10px auto; text-align: center; }
+        .btn-group button { border: none; color: white; font-size: 18px; font-weight: bold; padding: 14px 32px; border-radius: 56px; cursor: pointer; transition: 0.2s; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.15); letter-spacing: 1px; }
+        #saveAsImageBtn { background: #2c7da0; }
+        #saveAsImageBtn:hover { background: #1f5e7a; transform: scale(1.02); }
+        #downloadPdfBtn { background: #d9534f; }
+        #downloadPdfBtn:hover { background: #c9302c; transform: scale(1.02); }
+        #printBtn { background: #5f6c7a; }
+        #printBtn:hover { background: #4a5568; transform: scale(1.02); }
+        
+        .footer-note-bottom { display: none; }
+        
+        @media (max-width: 220mm) {
+            body { padding: 10px; overflow-x: auto; justify-content: center; }
+            .invoice-container, .control-panel, .btn-group { margin-left: auto; margin-right: auto; }
+            .btn-group { gap: 16px; }
+            .btn-group button { padding: 12px 24px; font-size: 16px; }
+            .sign-center { white-space: normal; }
+        }
+        @media (max-width: 480px) {
+            .btn-group { gap: 12px; }
+            .btn-group button { padding: 10px 18px; font-size: 14px; }
+            .sign-stamp { gap: 8px; }
+            .sign-center { white-space: normal; font-size: 10px; }
+            .remark-box { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+<div class="invoice-container" id="invoiceContainer">
+    <div class="normal-content" id="normalContent">
+        <img id="brandImage" class="brand-overlay" src="" alt="品牌图" style="display: none;">
+        <img id="companyStamp" class="company-stamp" src="" alt="公司章" style="display: none;">
+        
+        <div class="header-info">
+            <div class="company-title" id="companyTitle">慧语电子票据</div>
+            <div class="sub-title" id="contactInfo">联系电话：000-000000 &nbsp;|&nbsp; 联系人：某某某</div>
+        </div>
+        <div class="title-divider"></div>
+        <div class="meta-row">
+            <div class="meta-item"><strong>收货单位：</strong><span id="customerNameDisplay" class="static-text">XXX单位</span></div>
+            <div class="meta-item"><strong>开单日期：</strong><span id="headerInvoiceDate" class="static-text"></span></div>
+        </div>
+        <div class="table-wrapper">
+            <table class="sales-table" id="salesTable">
+                <thead>
+                    <tr><th style="width:45px">序号</th><th>名称</th><th style="width:60px">单位</th><th style="width:70px">数量</th><th style="width:100px">单价(元)</th><th style="width:90px">金额(元)</th><th>备注/类别</th></tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+        <div class="total-row">
+            <div class="total-left"><strong>合计(大写):</strong> <span id="amountCN" class="amount-chinese">零元整</span></div>
+            <div class="total-right">￥ <span id="amountTotal">0.00</span></div>
+        </div>
+        <div class="remark-box" id="remarkBox">
+            <strong>备  注：</strong> 
+            <span id="remarkText">祝你生活愉快，感谢您的支持与信任！</span>
+            <button id="editRemarkBtn">✎ 编辑</button>
+        </div>
+        
+        <div class="sign-stamp">
+            <div class="sign-left"><div class="sign-line"><span id="signerName">制单人：某某某</span></div></div>
+            <div class="sign-center"><span class="sign-note">本电子票据盖章有效 | 电子单据与纸质同等效力</span></div>
+            <div class="sign-right"><span class="sign-invoice-no"><strong>票据编号：</strong><span id="invoiceNo"></span></span></div>
+        </div>
+    </div>
+    
+    <div class="image-mode-container" id="imageModeContainer">
+        <canvas id="imageCanvas"></canvas>
+    </div>
+    <div id="imageControlBarExternal" style="display: none;" class="image-control-bar-external">
+        <button id="rotateLeftBtn">↺ 左转90°</button>
+        <button id="rotateRightBtn">↻ 右转90°</button>
+        <button id="closeImageModeBtn" style="background: #d9534f; color: white;">✕ 关闭图片</button>
+    </div>
+</div>
+
+<div class="control-panel" id="controlPanel">
+    <div class="tab-buttons">
+        <button class="tab-btn active" data-tab="basic">基本资料</button>
+        <button class="tab-btn" data-tab="edit">添加删除</button>
+        <button class="tab-btn" data-tab="image">商标管理</button>
+        <button class="tab-btn" data-tab="batch">批量解析</button>
+    </div>
+    <div class="tab-pane active-pane" id="tab-basic">
+        <div class="info-edit-panel">
+            <div class="info-field"><label>🏢 公司名称</label><input type="text" id="editCompany" value="慧语电子票据"></div>
+            <div class="info-field"><label>📞 联系电话</label><input type="text" id="editPhone" value="000-000000"></div>
+            <div class="info-field"><label>👤 联系人</label><input type="text" id="editContact" value="某某某"></div>
+            <div class="info-field"><label>✍️ 制单人</label><input type="text" id="editSigner" value="某某某"></div>
+            <div class="info-field"><label>🏪 收货单位</label><input type="text" id="editCustomer" value="XXX单位"></div>
+        </div>
+    </div>
+    <div class="tab-pane" id="tab-edit">
+        <div class="add-remove-panel">
+            <div class="add-goods-form">
+                <div class="form-row"><div class="form-field"><label>商品名称</label><input type="text" id="prodName" placeholder="请输入商品名称"></div><div class="form-field"><label>单位</label><input type="text" id="prodUnit" value="个"></div><div class="form-field"><label>数量</label><input type="number" id="prodQty" value="1" step="any" min="0.01"></div><div class="form-field"><label>单价(元)</label><input type="number" id="prodPrice" value="0.00" step="0.01" min="0"></div></div>
+                <div class="form-row"><div class="form-field"><label>备注</label><input type="text" id="prodRemark" placeholder="可选"></div><div class="form-field" style="flex:0 0 auto;"><button id="addItemBtn" class="add-btn">➕ 添加商品</button></div></div>
+            </div>
+            <div class="action-buttons">
+                <div class="btn-group-row"><div class="btn-group-title">✏️ 编辑当前选中商品</div><button id="loadEditBtn" class="action-icon-btn">📋 加载选中</button><button id="saveEditBtn" class="btn-sm">💾 保存修改</button></div>
+                <div class="btn-group-row"><div class="btn-group-title">🔁 调整顺序</div><button id="moveUpBtn" class="action-icon-btn">↑ 上移</button><button id="moveDownBtn" class="action-icon-btn">↓ 下移</button></div>
+                <div class="btn-group-row"><div class="btn-group-title">🗑️ 删除操作</div><button id="deleteSelectedBtn" class="action-icon-btn danger">删除选中</button><button id="clearAllBtn" class="btn-sm btn-sm-danger">清空全部</button></div>
+            </div>
+        </div>
+    </div>
+    <div class="tab-pane" id="tab-image">
+        <div style="margin-bottom:16px;font-weight:500;">📎 手指/鼠标拖拽可移动图片位置，图片会自动保存，图片3M内刷新页面不会丢失</div>
+        <div class="img-manager-group">
+            <div class="img-card"><div>🏢 品牌图</div><div class="control-row"><button id="uploadBrandBtn" class="btn-sm" style="background:#5f6c7a;">上传</button><button id="removeBrandBtn" class="btn-sm" style="background:#bc6c25;">移除</button><div class="size-control"><span>宽度(px):</span><input type="number" id="brandWidth" value="120" step="10" min="30" max="400"></div><button id="applyBrandSize" class="action-icon-btn">应用</button></div><input type="file" id="brandInput" accept="image/*" style="display: none;"></div>
+            <div class="img-card"><div>🖼️ 公司章</div><div class="control-row"><button id="uploadStampBtn" class="btn-sm" style="background:#5f6c7a;">上传</button><button id="removeStampBtn" class="btn-sm" style="background:#bc6c25;">移除</button><div class="size-control"><span>宽度(px):</span><input type="number" id="stampWidth" value="150" step="10" min="50" max="500"></div><button id="applyStampSize" class="action-icon-btn">应用</button></div><input type="file" id="stampInput" accept="image/*" style="display: none;"></div>
+            <div class="img-card" style="border: 2px dashed #2c7da0; background: #eef7ff;">
+                <div>🖼️ 导入背景图（自动适应宽度，可旋转）</div>
+                <div class="control-row">
+                    <button id="importFullImageBtn" class="btn-sm" style="background: #2c7da0;">📂 导入图片</button>
+                    <span style="font-size:12px; color:#666;">旋转后品牌图/公司章自动居中</span>
+                </div>
+                <input type="file" id="fullImageInput" accept="image/*" style="display: none;">
+            </div>
+        </div>
+        <div class="footer-note-bottom" style="margin-top:12px;font-size:11px;color:#888;">💡 点击移除会清除缓存。</div>
+    </div>
+    <div class="tab-pane" id="tab-batch">
+        <div class="batch-parse"><div class="batch-title">🧠 精准批量解析 (自动识别数量/单位/单价/总价)</div><textarea id="batchRawInput" rows="5" class="batch-textarea" placeholder="支持格式示例：\n商品名称 数量 单位 单价     → 智能平板 3 台 2499\n商品名称 数量单位 单价     → 网线 5根 2.8\n商品名称 数量 单价         → 鼠标 10 25（单位默认为个）\n商品名称 数量单位 总价     → 键盘 2个 160（自动计算单价80）\n商品名称 总价             → 工费 600（数量默认为1）"></textarea><div class="batch-preview" id="parsePreview"></div><div class="batch-actions"><button id="parseBtn" class="btn-outline">🔍 智能解析预览</button><button id="confirmAddBatchBtn" class="btn-sm">✓ 确认添加全部</button></div></div>
+    </div>
+</div>
+<div class="btn-group">
+    <button id="saveAsImageBtn">📷 保存为图片</button>
+    <button id="downloadPdfBtn">📄 下载 PDF</button>
+    <button id="printBtn">🖨️ 打印电子票据</button>
+</div>
+
+<script>
+    // ======================== 水印模块 ========================
+    let lastWatermarkText = '';
+    const WATERMARK_MEMORY_KEY = 'lastWatermarkText';
+    const DEFAULT_WATERMARK_EXAMPLE = 'XX公司收款专用2026';
+    
+    function loadWatermarkMemory() { const saved = localStorage.getItem(WATERMARK_MEMORY_KEY); if (saved) lastWatermarkText = saved; }
+    function saveWatermarkMemory(text) { if (text && text.trim()) { localStorage.setItem(WATERMARK_MEMORY_KEY, text); lastWatermarkText = text; } else { localStorage.removeItem(WATERMARK_MEMORY_KEY); lastWatermarkText = ''; } }
+    
+    function createWatermarkImageData(text) {
+        if (!text || text.trim() === '') return null;
+        let displayText = text.length > 18 ? text.substring(0, 15) + '...' : text;
+        const canvas = document.createElement('canvas');
+        const size = 220;
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, size, size);
+        let fontSize = 20;
+        if (displayText.length >= 14) fontSize = 16;
+        if (displayText.length >= 18) fontSize = 14;
+        ctx.font = `bold ${fontSize}px "Microsoft YaHei", "Segoe UI", "PingFang SC"`;
+        ctx.fillStyle = '#7f8c8d';
+        ctx.shadowBlur = 0;
+        ctx.translate(size/2, size/2);
+        ctx.rotate(-28 * Math.PI / 180);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(displayText, 0, 0);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        return canvas.toDataURL('image/png');
+    }
+    
+    function addWatermarkToClone(cloneContainer, watermarkText) {
+        if (!watermarkText || watermarkText.trim() === '') return;
+        const imgData = createWatermarkImageData(watermarkText);
+        if (!imgData) return;
+        const watermarkDiv = document.createElement('div');
+        watermarkDiv.className = 'watermark-layer';
+        watermarkDiv.style.backgroundImage = `url(${imgData})`;
+        watermarkDiv.style.backgroundRepeat = 'repeat';
+        watermarkDiv.style.backgroundSize = '220px 220px';
+        watermarkDiv.style.opacity = '0.28';
+        cloneContainer.style.position = 'relative';
+        cloneContainer.appendChild(watermarkDiv);
+    }
+    
+    async function askWatermark() {
+        return new Promise((resolve) => {
+            const useWatermark = confirm('是否添加防伪水印？\n点击“确定”添加，取消则不添加。');
+            if (!useWatermark) { resolve(null); return; }
+            let defaultText = lastWatermarkText || DEFAULT_WATERMARK_EXAMPLE;
+            let userInput = prompt('请输入水印文字（最多18个字符）:', defaultText);
+            if (userInput === null) { resolve(null); return; }
+            let trimmed = userInput.trim();
+            if (trimmed === '') { alert('水印内容不能为空，将不添加水印。'); resolve(null); return; }
+            if (trimmed.length > 18) { alert('水印文字超过18个字符，请重新输入（最多18个）。'); resolve(null); return; }
+            saveWatermarkMemory(trimmed);
+            resolve(trimmed);
+        });
+    }
+    
+    // ======================== 核心克隆函数（支持背景图模式） ========================
+    function getCleanClone(removeEditButton = true, stampOffsetY = 0, watermarkText = null) {
+        const original = document.getElementById('invoiceContainer');
+        const clone = original.cloneNode(true);
+        const isImageMode = (document.getElementById('imageModeContainer').style.display === 'block');
+        if (isImageMode) {
+            const normalClone = clone.querySelector('#normalContent');
+            if (normalClone) normalClone.style.display = 'none';
+            const imageContainerClone = clone.querySelector('#imageModeContainer');
+            if (imageContainerClone) imageContainerClone.style.display = 'block';
+            const controlBarClone = clone.querySelector('#imageControlBarExternal');
+            if (controlBarClone) controlBarClone.remove();
+            const origCanvas = document.getElementById('imageCanvas');
+            const cloneCanvas = imageContainerClone ? imageContainerClone.querySelector('#imageCanvas') : null;
+            if (origCanvas && cloneCanvas && origCanvas.width > 0 && origCanvas.height > 0) {
+                cloneCanvas.width = origCanvas.width;
+                cloneCanvas.height = origCanvas.height;
+                const cloneCtx = cloneCanvas.getContext('2d');
+                cloneCtx.drawImage(origCanvas, 0, 0);
+            }
+        } else {
+            const imageContainerClone = clone.querySelector('#imageModeContainer');
+            if (imageContainerClone) imageContainerClone.style.display = 'none';
+            const normalClone = clone.querySelector('#normalContent');
+            if (normalClone) normalClone.style.display = 'block';
+        }
+        clone.querySelectorAll('.selected-row').forEach(r => r.classList.remove('selected-row'));
+        if (removeEditButton) {
+            const editBtn = clone.querySelector('#editRemarkBtn');
+            if (editBtn) editBtn.remove();
+        }
+        const origBrand = document.getElementById('brandImage');
+        const cloneBrand = clone.querySelector('#brandImage');
+        if (origBrand && origBrand.style.display !== 'none' && cloneBrand) {
+            cloneBrand.style.left = origBrand.style.left;
+            cloneBrand.style.top = origBrand.style.top;
+            cloneBrand.style.right = 'auto';
+            cloneBrand.style.bottom = 'auto';
+            cloneBrand.style.width = origBrand.style.width;
+        }
+        const origStamp = document.getElementById('companyStamp');
+        const cloneStamp = clone.querySelector('#companyStamp');
+        if (origStamp && origStamp.style.display !== 'none' && cloneStamp) {
+            cloneStamp.style.left = origStamp.style.left;
+            cloneStamp.style.top = origStamp.style.top;
+            cloneStamp.style.right = 'auto';
+            cloneStamp.style.bottom = 'auto';
+            cloneStamp.style.width = origStamp.style.width;
+        }
+        const oldWatermark = clone.querySelector('.watermark-layer');
+        if (oldWatermark) oldWatermark.remove();
+        if (watermarkText && watermarkText.trim()) {
+            addWatermarkToClone(clone, watermarkText);
+        }
+        const remarkBox = clone.querySelector('.remark-box');
+        const remarkSpan = clone.querySelector('#remarkText');
+        if (remarkBox) {
+            const origRemarkBox = document.querySelector('.remark-box');
+            if (origRemarkBox) {
+                const origHeight = origRemarkBox.offsetHeight;
+                remarkBox.style.height = origHeight + 'px';
+                remarkBox.style.minHeight = origHeight + 'px';
+            }
+            remarkBox.style.width = '100%';
+            remarkBox.style.boxSizing = 'border-box';
+            remarkBox.style.display = 'flex';
+            remarkBox.style.alignItems = 'center';
+            remarkBox.style.flexWrap = 'wrap';
+            remarkBox.style.gap = '8px';
+        }
+        if (remarkSpan) {
+            remarkSpan.style.whiteSpace = 'normal';
+            remarkSpan.style.wordBreak = 'break-word';
+            remarkSpan.style.lineHeight = '1.4';
+        }
+        clone.style.transform = 'none';
+        return clone;
+    }
+    
+    // ======================== 业务数据模块 ========================
+    let items = []; 
+    let selectedIndex = -1;
+    const STORAGE_KEY = 'SmartSalesInvoiceData';
+    const STANDARD_UNITS = new Set(['个','台','套','根','件','只','条','支','箱','包','瓶','盒','桶','双','对','米','千克','公斤','克','升','毫升','袋','卷','组','部','块','片','张','把','粒','罐','打','份','册','本','辆','架','顶','副','串','捆','扎','排','座','栋','扇','盏','枚','轴','码','英尺','英寸','厘米','毫米','GB','TB']);
+    
+    function saveToLocalStorage() { 
+        try { 
+            const data = { 
+                items, selectedIndex, 
+                company: document.getElementById('editCompany').value, 
+                phone: document.getElementById('editPhone').value, 
+                contact: document.getElementById('editContact').value, 
+                signer: document.getElementById('editSigner').value, 
+                customer: document.getElementById('editCustomer').value, 
+                remark: document.getElementById('remarkText').innerText 
+            }; 
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); 
+        } catch(e) {} 
+    }
+    
+    function loadFromLocalStorage() { 
+        const raw = localStorage.getItem(STORAGE_KEY); 
+        if (!raw) return false; 
+        try { 
+            const data = JSON.parse(raw); 
+            if (data.items) items = data.items; 
+            if (typeof data.selectedIndex === 'number') selectedIndex = data.selectedIndex; 
+            if (data.company) document.getElementById('editCompany').value = data.company; 
+            if (data.phone) document.getElementById('editPhone').value = data.phone; 
+            if (data.contact) document.getElementById('editContact').value = data.contact; 
+            if (data.signer) document.getElementById('editSigner').value = data.signer; 
+            if (data.customer) document.getElementById('editCustomer').value = data.customer; 
+            if (data.remark) document.getElementById('remarkText').innerText = data.remark; 
+            syncEditableInfo(); 
+            renderTable(); 
+            return true; 
+        } catch(e) { return false; } 
+    }
+    
+    function syncEditableInfo() { 
+        document.getElementById('companyTitle').innerText = document.getElementById('editCompany').value || "慧语电子票据"; 
+        document.getElementById('contactInfo').innerHTML = `联系电话：${document.getElementById('editPhone').value || ''} &nbsp;|&nbsp; 联系人：${document.getElementById('editContact').value || ''}`; 
+        document.getElementById('signerName').innerText = `制单人：${document.getElementById('editSigner').value || ''}`; 
+        document.getElementById('customerNameDisplay').innerText = document.getElementById('editCustomer').value || ''; 
+        saveToLocalStorage(); 
+    }
+    
+    function setInvoiceMeta() { 
+        const d = new Date(); 
+        const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0'); 
+        const hours = String(d.getHours()).padStart(2,'0'), minutes = String(d.getMinutes()).padStart(2,'0'); 
+        document.getElementById('headerInvoiceDate').innerText = `${y}-${m}-${day} ${hours}:${minutes}`; 
+        document.getElementById('invoiceNo').innerText = `XS-${y}${m}${day}-${Math.floor(Math.random()*1000)}`; 
+    }
+    
+    function convertCurrency(money) { 
+        if(isNaN(money)) return '零元整'; 
+        let num=Math.round(parseFloat(money)*100)/100; 
+        let fraction=['角','分'], digit=['零','壹','贰','叁','肆','伍','陆','柒','捌','玖']; 
+        let head=num<0?'负':''; 
+        num=Math.abs(num); 
+        let s=''; 
+        for(let i=0;i<fraction.length;i++){ 
+            let temp=(Math.floor(num*10*Math.pow(10,i))%10).toString(); 
+            if(temp!=='0') s+=digit[parseInt(temp)]+fraction[i]; 
+        } 
+        let integerPart=Math.floor(num); 
+        if(integerPart===0){ 
+            return (s===''?'零元整':'零元'+s); 
+        } 
+        let p=0,strInt=''; 
+        let tmp=integerPart; 
+        while(tmp>0){ 
+            let part=tmp%10000; 
+            if(part!==0){ 
+                let partStr='',partNum=part,thousand=0; 
+                while(partNum>0){ 
+                    let cur=partNum%10; 
+                    if(cur!==0) partStr=digit[cur]+['','拾','佰','仟'][thousand]+partStr; 
+                    else if(partStr.length>0&&partStr[0]!=='零') partStr='零'+partStr; 
+                    partNum=Math.floor(partNum/10); 
+                    thousand++; 
+                } 
+                if(part<1000&&p>0&&strInt!==''&&strInt[0]!=='零') partStr='零'+partStr; 
+                strInt=partStr+(p===0?'':['元','万','亿'][p])+strInt; 
+            } 
+            p++; 
+            tmp=Math.floor(tmp/10000); 
+        } 
+        if(s==='') s='整'; 
+        return head+strInt+'元'+s; 
+    }
+    
+    function getSubtotal() { return items.reduce((s, it) => s + it.qty * it.price, 0); }
+    
+    function updateTotal() { 
+        let sub = getSubtotal(); 
+        document.getElementById('amountTotal').innerText = sub.toFixed(2); 
+        document.getElementById('amountCN').innerHTML = convertCurrency(sub); 
+        updateButtonsState(); 
+        saveToLocalStorage(); 
+    }
+    
+    function renderTable(){ 
+        const tbody=document.getElementById('tableBody'); 
+        tbody.innerHTML=''; 
+        if(items.length===0){ 
+            selectedIndex=-1; 
+            const row=tbody.insertRow(); 
+            row.insertCell(0).colSpan=7; 
+            row.cells[0].style.textAlign='center'; 
+            row.cells[0].style.padding='32px'; 
+            row.cells[0].innerText='✨ 暂无商品，请添加商品 ✨'; 
+            updateTotal(); 
+            updateButtonsState(); 
+            saveToLocalStorage(); 
+            adjustStampPosition();
+            return; 
+        }
+        items.forEach((item,idx)=>{ 
+            const row=tbody.insertRow(); 
+            if(idx===selectedIndex) row.classList.add('selected-row'); 
+            const seqCell=row.insertCell(0); 
+            seqCell.innerText=idx+1; 
+            seqCell.className='clickable-seq'; 
+            seqCell.onclick=(e)=>{ e.stopPropagation(); selectedIndex=idx; renderTable(); }; 
+            row.insertCell(1).innerText=item.name; 
+            row.insertCell(2).innerText=item.unit; 
+            row.insertCell(3).innerText=item.qty; 
+            row.insertCell(4).innerText=item.price.toFixed(2); 
+            row.insertCell(5).innerText=(item.qty*item.price).toFixed(2); 
+            row.insertCell(6).innerText=item.remark||''; 
+        });
+        updateTotal(); 
+        updateButtonsState(); 
+        saveToLocalStorage();
+        adjustStampPosition();
+    }
+    
+    function updateButtonsState(){ 
+        const up=document.getElementById('moveUpBtn'),down=document.getElementById('moveDownBtn'),del=document.getElementById('deleteSelectedBtn'); 
+        const valid=(selectedIndex>=0 && selectedIndex<items.length && items.length>0); 
+        if(!valid){ 
+            up.classList.add('disabled'); 
+            down.classList.add('disabled'); 
+            del.classList.add('disabled'); 
+        } else { 
+            up.classList.remove('disabled'); 
+            down.classList.remove('disabled'); 
+            del.classList.remove('disabled'); 
+            if(selectedIndex===0) up.classList.add('disabled'); 
+            if(selectedIndex===items.length-1) down.classList.add('disabled'); 
+        } 
+    }
+    
+    function moveUp(){ if(selectedIndex>0){ [items[selectedIndex-1],items[selectedIndex]]=[items[selectedIndex],items[selectedIndex-1]]; selectedIndex--; renderTable(); } }
+    function moveDown(){ if(selectedIndex<items.length-1){ [items[selectedIndex+1],items[selectedIndex]]=[items[selectedIndex],items[selectedIndex+1]]; selectedIndex++; renderTable(); } }
+    function deleteSelected(){ if(selectedIndex>=0 && confirm(`删除「${items[selectedIndex].name}」?`)){ items.splice(selectedIndex,1); selectedIndex=items.length?Math.min(selectedIndex,items.length-1):-1; renderTable(); } }
+    
+    function addManual(){ 
+        let name=document.getElementById('prodName').value.trim(); 
+        if(!name){ alert("请输入商品名称"); return; } 
+        let unit=document.getElementById('prodUnit').value.trim()||"个"; 
+        let qty=parseFloat(document.getElementById('prodQty').value); 
+        if(isNaN(qty)||qty<=0){ alert("数量必须大于0"); return; } 
+        let price=parseFloat(document.getElementById('prodPrice').value); 
+        if(isNaN(price)||price<0){ alert("单价不能为负数"); return; } 
+        let remark=document.getElementById('prodRemark').value.trim(); 
+        items.push({name,unit,qty,price,remark}); 
+        if(items.length===1) selectedIndex=0; 
+        renderTable(); 
+        document.getElementById('prodName').value=''; 
+        document.getElementById('prodRemark').value=''; 
+        document.getElementById('prodUnit').value='个'; 
+        document.getElementById('prodQty').value='1'; 
+        document.getElementById('prodPrice').value='0.00'; 
+    }
+    
+    function clearAll(){ if(items.length && confirm('清空所有商品？')){ items=[]; selectedIndex=-1; renderTable(); } }
+    function loadSelectedToForm(){ if(selectedIndex<0||!items[selectedIndex]){ alert('请先点击序号选中一个商品'); return; } const it=items[selectedIndex]; document.getElementById('prodName').value=it.name; document.getElementById('prodUnit').value=it.unit; document.getElementById('prodQty').value=it.qty; document.getElementById('prodPrice').value=it.price; document.getElementById('prodRemark').value=it.remark||''; }
+    function saveEditToSelected(){ if(selectedIndex<0||!items[selectedIndex]){ alert('请先选中要修改的商品'); return; } let name=document.getElementById('prodName').value.trim(); if(!name){ alert("商品名称不能为空"); return; } let unit=document.getElementById('prodUnit').value.trim()||"个"; let qty=parseFloat(document.getElementById('prodQty').value); if(isNaN(qty)||qty<=0){ alert("数量必须大于0"); return; } let price=parseFloat(document.getElementById('prodPrice').value); if(isNaN(price)||price<0){ alert("单价不能为负数"); return; } let remark=document.getElementById('prodRemark').value.trim(); items[selectedIndex]={name,unit,qty,price,remark}; renderTable(); alert(`商品「${name}」已修改`); }
+    
+    let parsedBuffer=[];
+    function extractPrice(t){ let m=t.match(/(\d+(?:\.\d{1,2})?)\s*元?\s*$/); if(m) return {price:parseFloat(m[1]), rest:t.substring(0,m.index).trim()}; return null; }
+    function parseProductLine(line){ line=line.trim(); if(!line) return null; let priceInfo=extractPrice(line); if(!priceInfo) return null; let totalPrice=priceInfo.price; let restText=priceInfo.rest; let qty=1, unit='个', name=restText; let qtyUnitMatch=restText.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z\u4e00-\u9fa5]{1,4})$/); if(qtyUnitMatch){ let tmpQty=parseFloat(qtyUnitMatch[1]); let tmpUnit=qtyUnitMatch[2]; if(tmpQty>0 && STANDARD_UNITS.has(tmpUnit)){ qty=tmpQty; unit=tmpUnit; name=restText.substring(0,restText.length - (tmpQty.toString()+tmpUnit).length).trim(); } } if(!name) name=restText; for(let u of STANDARD_UNITS) if(name.endsWith(u)){ name=name.substring(0,name.length-u.length).trim(); break; } if(name==="") name="商品"; let unitPrice=Math.round((totalPrice/qty)*100)/100; return {name, unit, qty:qty>0?qty:1, price:unitPrice}; }
+    function parseBatch(){ const raw=document.getElementById('batchRawInput').value; const lines=raw.split(/\r?\n/); let res=[]; for(let line of lines){ line=line.trim(); if(!line) continue; let p=parseProductLine(line); if(p) res.push(p); } parsedBuffer=res; const previewDiv=document.getElementById('parsePreview'); if(res.length===0) previewDiv.innerHTML='<div style="color:#e67e22;">⚠️ 未能识别有效商品</div>'; else previewDiv.innerHTML=res.map(p=>`<div class="preview-item">✅ ${p.name} &nbsp; ${p.qty}${p.unit} &nbsp; ¥${p.price.toFixed(2)} (小计: ${(p.qty*p.price).toFixed(2)})</div>`).join(''); return res; }
+    function confirmAddBatch(){ if(parsedBuffer.length===0){ alert('没有解析成功的商品，请先点击“智能解析预览”'); return; } for(let prod of parsedBuffer) items.push({...prod, remark:''}); if(items.length>0 && selectedIndex===-1) selectedIndex=0; renderTable(); parsedBuffer=[]; document.getElementById('parsePreview').innerHTML='<div style="color:#2e7d64;">✅ 已成功添加</div>'; document.getElementById('batchRawInput').value=''; }
+    
+    // ======================== 品牌图/公司章拖拽与存储（支持相对偏移） ========================
+    function makeElementDraggable(el) {
+        if (!el) return;
+        let drag = false, startX = 0, startY = 0, startL = 0, startT = 0;
+        const onStart = (clientX, clientY) => {
+            if (!el.src || el.style.display === 'none') return;
+            drag = true;
+            startX = clientX;
+            startY = clientY;
+            startL = parseFloat(el.style.left) || 0;
+            startT = parseFloat(el.style.top) || 0;
+            el.classList.add('dragging');
+            document.body.style.userSelect = 'none';
+        };
+        const onMove = (clientX, clientY) => {
+            if (!drag) return;
+            let newLeft = startL + (clientX - startX);
+            let newTop = startT + (clientY - startY);
+            el.style.left = newLeft + 'px';
+            el.style.top = newTop + 'px';
+            const isImageMode = (document.getElementById('imageModeContainer').style.display === 'block');
+            if (el.id === 'brandImage') {
+                if (isImageMode) saveBrandStateBg();
+                else saveBrandState();
+            }
+            if (el.id === 'companyStamp') {
+                if (isImageMode) saveStampStateBg();
+                else {
+                    updateStampOffset();
+                    saveStampState();
+                }
+            }
+        };
+        const onEnd = () => {
+            if (drag) {
+                drag = false;
+                el.classList.remove('dragging');
+                document.body.style.userSelect = '';
+            }
+        };
+        const mouseDownHandler = (e) => { e.preventDefault(); onStart(e.clientX, e.clientY); };
+        const touchStartHandler = (e) => { e.preventDefault(); const t = e.touches[0]; onStart(t.clientX, t.clientY); };
+        el.removeEventListener('mousedown', mouseDownHandler);
+        el.removeEventListener('touchstart', touchStartHandler);
+        el.addEventListener('mousedown', mouseDownHandler);
+        el.addEventListener('touchstart', touchStartHandler, { passive: false });
+        window.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchmove', (e) => { if(drag) { e.preventDefault(); const t = e.touches[0]; onMove(t.clientX, t.clientY); } }, { passive: false });
+        window.addEventListener('touchend', onEnd);
+    }
+    
+    function saveBrandState() {
+        const brand = document.getElementById('brandImage');
+        if (brand.src && brand.style.display !== 'none') {
+            localStorage.setItem('brandImageData', brand.src);
+            localStorage.setItem('brandImagePos', JSON.stringify({ left: brand.style.left, top: brand.style.top }));
+            localStorage.setItem('brandImageWidth', document.getElementById('brandWidth').value);
+        } else {
+            localStorage.removeItem('brandImageData');
+            localStorage.removeItem('brandImagePos');
+        }
+    }
+    function restoreBrand() {
+        const data = localStorage.getItem('brandImageData');
+        if (data) {
+            const brand = document.getElementById('brandImage');
+            brand.src = data;
+            brand.style.display = 'inline-block';
+            const pos = localStorage.getItem('brandImagePos');
+            if (pos) try { const p = JSON.parse(pos); brand.style.left = p.left; brand.style.top = p.top; } catch(e) {}
+            const w = localStorage.getItem('brandImageWidth');
+            if (w) { brand.style.width = w + 'px'; document.getElementById('brandWidth').value = w; }
+            return true;
+        }
+        return false;
+    }
+    
+    function saveBrandStateBg() {
+        const brand = document.getElementById('brandImage');
+        if (brand.src && brand.style.display !== 'none') {
+            localStorage.setItem('brandImageDataBg', brand.src);
+            localStorage.setItem('brandImagePosBg', JSON.stringify({ left: brand.style.left, top: brand.style.top }));
+            localStorage.setItem('brandImageWidthBg', document.getElementById('brandWidth').value);
+        } else {
+            localStorage.removeItem('brandImageDataBg');
+            localStorage.removeItem('brandImagePosBg');
+        }
+    }
+    function restoreBrandBg() {
+        const data = localStorage.getItem('brandImageDataBg');
+        if (data) {
+            const brand = document.getElementById('brandImage');
+            brand.src = data;
+            brand.style.display = 'inline-block';
+            const pos = localStorage.getItem('brandImagePosBg');
+            if (pos) try { const p = JSON.parse(pos); brand.style.left = p.left; brand.style.top = p.top; } catch(e) {}
+            const w = localStorage.getItem('brandImageWidthBg');
+            if (w) { brand.style.width = w + 'px'; document.getElementById('brandWidth').value = w; }
+            return true;
+        }
+        return false;
+    }
+    
+    let stampOffsetX = 0, stampOffsetY = 0;
+    function updateStampOffset() {
+        const stamp = document.getElementById('companyStamp');
+        const numberSpan = document.getElementById('invoiceNo');
+        if (!stamp || stamp.style.display === 'none' || !numberSpan) return;
+        const stampRect = stamp.getBoundingClientRect();
+        const numberRect = numberSpan.getBoundingClientRect();
+        stampOffsetX = stampRect.left - numberRect.left;
+        stampOffsetY = stampRect.top - numberRect.top;
+        localStorage.setItem('stampRelativeOffset', JSON.stringify({ offsetX: stampOffsetX, offsetY: stampOffsetY }));
+    }
+    function loadStampOffset() {
+        const saved = localStorage.getItem('stampRelativeOffset');
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                stampOffsetX = data.offsetX;
+                stampOffsetY = data.offsetY;
+                return true;
+            } catch(e) {}
+        }
+        return false;
+    }
+    
+    function adjustStampPosition() {
+        const isImageMode = (document.getElementById('imageModeContainer').style.display === 'block');
+        if (isImageMode) return;
+        const stamp = document.getElementById('companyStamp');
+        if (!stamp || stamp.style.display === 'none') return;
+        const numberSpan = document.getElementById('invoiceNo');
+        if (!numberSpan) return;
+        if (!loadStampOffset()) {
+            const numberRect = numberSpan.getBoundingClientRect();
+            const stampWidth = parseInt(stamp.style.width) || 150;
+            const stampHeight = stampWidth;
+            const centerX = (numberRect.left + numberRect.right) / 2;
+            const centerY = (numberRect.top + numberRect.bottom) / 2;
+            const desiredLeft = centerX - stampWidth / 2;
+            const desiredTop = centerY - stampHeight / 2;
+            stampOffsetX = desiredLeft - numberRect.left;
+            stampOffsetY = desiredTop - numberRect.top;
+            localStorage.setItem('stampRelativeOffset', JSON.stringify({ offsetX: stampOffsetX, offsetY: stampOffsetY }));
+        }
+        const numberRect = numberSpan.getBoundingClientRect();
+        const container = document.getElementById('invoiceContainer');
+        const containerRect = container.getBoundingClientRect();
+        let left = numberRect.left + stampOffsetX - containerRect.left;
+        let top = numberRect.top + stampOffsetY - containerRect.top;
+        left = Math.max(5, left);
+        top = Math.max(5, top);
+        stamp.style.left = left + 'px';
+        stamp.style.top = top + 'px';
+        stamp.style.right = 'auto';
+        stamp.style.bottom = 'auto';
+        saveStampState();
+    }
+    
+    function saveStampState() {
+        const stamp = document.getElementById('companyStamp');
+        if (stamp.src && stamp.style.display !== 'none') {
+            localStorage.setItem('stampImageData', stamp.src);
+            localStorage.setItem('stampImagePos', JSON.stringify({ left: stamp.style.left, top: stamp.style.top }));
+            localStorage.setItem('stampImageWidth', document.getElementById('stampWidth').value);
+        } else {
+            localStorage.removeItem('stampImageData');
+            localStorage.removeItem('stampImagePos');
+        }
+    }
+    function restoreStamp() {
+        const data = localStorage.getItem('stampImageData');
+        if (data) {
+            const stamp = document.getElementById('companyStamp');
+            stamp.src = data;
+            stamp.style.display = 'inline-block';
+            const pos = localStorage.getItem('stampImagePos');
+            if (pos) {
+                try {
+                    const p = JSON.parse(pos);
+                    stamp.style.left = p.left;
+                    stamp.style.top = p.top;
+                    stamp.style.right = 'auto';
+                    stamp.style.bottom = 'auto';
+                } catch(e) {}
+            } else {
+                adjustStampPosition();
+            }
+            const w = localStorage.getItem('stampImageWidth');
+            if (w) {
+                stamp.style.width = w + 'px';
+                document.getElementById('stampWidth').value = w;
+            }
+            loadStampOffset();
+            return true;
+        }
+        return false;
+    }
+    
+    function saveStampStateBg() {
+        const stamp = document.getElementById('companyStamp');
+        if (stamp.src && stamp.style.display !== 'none') {
+            localStorage.setItem('stampImageDataBg', stamp.src);
+            localStorage.setItem('stampImagePosBg', JSON.stringify({ left: stamp.style.left, top: stamp.style.top }));
+            localStorage.setItem('stampImageWidthBg', document.getElementById('stampWidth').value);
+        } else {
+            localStorage.removeItem('stampImageDataBg');
+            localStorage.removeItem('stampImagePosBg');
+        }
+    }
+    function restoreStampBg() {
+        const data = localStorage.getItem('stampImageDataBg');
+        if (data) {
+            const stamp = document.getElementById('companyStamp');
+            stamp.src = data;
+            stamp.style.display = 'inline-block';
+            const pos = localStorage.getItem('stampImagePosBg');
+            if (pos) try { const p = JSON.parse(pos); stamp.style.left = p.left; stamp.style.top = p.top; } catch(e) {}
+            const w = localStorage.getItem('stampImageWidthBg');
+            if (w) { stamp.style.width = w + 'px'; document.getElementById('stampWidth').value = w; }
+            return true;
+        }
+        return false;
+    }
+    
+    function getCenteredPosition(el, canvasElement) {
+        const elWidth = parseFloat(el.style.width) || 150;
+        const elHeight = elWidth;
+        const canvasRect = canvasElement.getBoundingClientRect();
+        const left = (canvasRect.width - elWidth) / 2;
+        const top = (canvasRect.height - elHeight) / 2;
+        return { left: Math.max(0, left), top: Math.max(0, top) };
+    }
+    
+    function moveElementToContainer(el, targetContainer) {
+        if (!el || !targetContainer) return;
+        if (el.parentNode === targetContainer) return;
+        const elRect = el.getBoundingClientRect();
+        const targetRect = targetContainer.getBoundingClientRect();
+        let newLeft = elRect.left - targetRect.left;
+        let newTop = elRect.top - targetRect.top;
+        newLeft = Math.max(0, newLeft);
+        newTop = Math.max(0, newTop);
+        el.style.left = newLeft + 'px';
+        el.style.top = newTop + 'px';
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+        targetContainer.appendChild(el);
+        el.style.display = 'inline-block';
+    }
+    
+    function moveAndPositionImage(el, container, canvas) {
+        if (!el || el.style.display === 'none') return;
+        if (el.parentNode !== container) {
+            moveElementToContainer(el, container);
+        }
+        let restored = false;
+        if (el.id === 'brandImage') restored = restoreBrandBg();
+        else if (el.id === 'companyStamp') restored = restoreStampBg();
+        if (!restored) {
+            const centerPos = getCenteredPosition(el, canvas);
+            el.style.left = centerPos.left + 'px';
+            el.style.top = centerPos.top + 'px';
+            if (el.id === 'brandImage') saveBrandStateBg();
+            else saveStampStateBg();
+        }
+        makeElementDraggable(el);
+    }
+    
+    function repositionOverlayImages() {
+        const brand = document.getElementById('brandImage');
+        const stamp = document.getElementById('companyStamp');
+        if (brand && brand.style.display !== 'none') {
+            const centerPos = getCenteredPosition(brand, imageCanvas);
+            brand.style.left = centerPos.left + 'px';
+            brand.style.top = centerPos.top + 'px';
+            saveBrandStateBg();
+        }
+        if (stamp && stamp.style.display !== 'none') {
+            const centerPos = getCenteredPosition(stamp, imageCanvas);
+            stamp.style.left = centerPos.left + 'px';
+            stamp.style.top = centerPos.top + 'px';
+            saveStampStateBg();
+        }
+    }
+    
+    // ======================== 背景图模式 ========================
+    const normalContent = document.getElementById('normalContent');
+    const imageModeContainer = document.getElementById('imageModeContainer');
+    const imageCanvas = document.getElementById('imageCanvas');
+    const ctx = imageCanvas.getContext('2d');
+    const controlBar = document.getElementById('imageControlBarExternal');
+    const rotateLeftBtn = document.getElementById('rotateLeftBtn');
+    const rotateRightBtn = document.getElementById('rotateRightBtn');
+    const closeImageModeBtn = document.getElementById('closeImageModeBtn');
+    const importFullImageBtn = document.getElementById('importFullImageBtn');
+    const fullImageInput = document.getElementById('fullImageInput');
+    
+    let originalImage = null;
+    let rotation = 0;
+    let scale = 1;
+    
+    function getContainerWidth() {
+        const container = imageModeContainer;
+        if (!container) return 400;
+        const style = getComputedStyle(container);
+        const paddingLeft = parseFloat(style.paddingLeft) || 0;
+        const paddingRight = parseFloat(style.paddingRight) || 0;
+        return container.clientWidth - paddingLeft - paddingRight - 10;
+    }
+    
+    function fitToContainer() {
+        if (!originalImage) return;
+        const containerWidth = getContainerWidth();
+        let imgW = originalImage.width;
+        let imgH = originalImage.height;
+        if (rotation % 180 !== 0) [imgW, imgH] = [imgH, imgW];
+        if (containerWidth <= 0) return;
+        const newScale = containerWidth / imgW;
+        scale = Math.min(3, Math.max(0.2, newScale));
+        redrawCanvas();
+    }
+    
+    function getDisplaySize() {
+        if (!originalImage) return { width: 100, height: 100 };
+        let w = originalImage.width, h = originalImage.height;
+        if (rotation % 180 !== 0) [w, h] = [h, w];
+        return { width: w * scale, height: h * scale };
+    }
+    
+    function redrawCanvas() {
+        if (!originalImage) return;
+        const { width: canvasW, height: canvasH } = getDisplaySize();
+        imageCanvas.width = canvasW;
+        imageCanvas.height = canvasH;
+        ctx.clearRect(0, 0, canvasW, canvasH);
+        ctx.save();
+        ctx.translate(canvasW / 2, canvasH / 2);
+        ctx.rotate(rotation * Math.PI / 180);
+        const drawW = originalImage.width * scale;
+        const drawH = originalImage.height * scale;
+        ctx.drawImage(originalImage, -drawW/2, -drawH/2, drawW, drawH);
+        ctx.restore();
+        imageCanvas.style.transform = 'none';
+    }
+    
+    function rotate(angleDelta) {
+        rotation = (rotation + angleDelta) % 360;
+        if (rotation < 0) rotation += 360;
+        fitToContainer();
+        repositionOverlayImages();
+    }
+    
+    function enterImageMode(imgObj) {
+        originalImage = imgObj;
+        rotation = 0;
+        scale = 1;
+        const brand = document.getElementById('brandImage');
+        const stamp = document.getElementById('companyStamp');
+        if (brand && brand.style.display !== 'none') saveBrandState();
+        if (stamp && stamp.style.display !== 'none') saveStampState();
+        normalContent.style.display = 'none';
+        imageModeContainer.style.display = 'block';
+        controlBar.style.display = 'flex';
+        requestAnimationFrame(() => {
+            fitToContainer();
+            setTimeout(() => {
+                if (brand && brand.style.display !== 'none') {
+                    moveAndPositionImage(brand, imageModeContainer, imageCanvas);
+                }
+                if (stamp && stamp.style.display !== 'none') {
+                    moveAndPositionImage(stamp, imageModeContainer, imageCanvas);
+                }
+            }, 50);
+        });
+    }
+    
+    function exitImageMode() {
+        const brand = document.getElementById('brandImage');
+        const stamp = document.getElementById('companyStamp');
+        const originalInvoiceContainer = document.getElementById('invoiceContainer');
+        if (brand && brand.style.display !== 'none') saveBrandStateBg();
+        if (stamp && stamp.style.display !== 'none') saveStampStateBg();
+        if (brand && brand.parentNode === imageModeContainer) {
+            moveElementToContainer(brand, originalInvoiceContainer);
+            restoreBrand();
+        }
+        if (stamp && stamp.parentNode === imageModeContainer) {
+            moveElementToContainer(stamp, originalInvoiceContainer);
+            restoreStamp();
+        }
+        makeElementDraggable(brand);
+        makeElementDraggable(stamp);
+        normalContent.style.display = 'block';
+        imageModeContainer.style.display = 'none';
+        controlBar.style.display = 'none';
+        originalImage = null;
+        ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+        imageCanvas.width = 100;
+        imageCanvas.height = 100;
+        rotation = 0;
+        scale = 1;
+    }
+    
+    importFullImageBtn.onclick = () => fullImageInput.click();
+    fullImageInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file && (file.type === 'image/png' || file.type === 'image/jpeg' || file.type === 'image/jpg' || file.type === 'image/webp')) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => enterImageMode(img);
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            alert('请选择有效的图片文件（PNG、JPG、JPEG、WEBP）');
+        }
+        fullImageInput.value = '';
+    };
+    
+    rotateLeftBtn.onclick = () => rotate(-90);
+    rotateRightBtn.onclick = () => rotate(90);
+    closeImageModeBtn.onclick = exitImageMode;
+    
+    // ======================== 品牌图和公司章上传控件 ========================
+    function initImageControls() {
+        const brandFile = document.getElementById('brandInput'), stampFile = document.getElementById('stampInput');
+        
+        document.getElementById('uploadBrandBtn').onclick = () => brandFile.click();
+        brandFile.onchange = e => {
+            const file = e.target.files[0];
+            if (file && (file.type === 'image/png' || file.type === 'image/jpeg')) {
+                const r = new FileReader();
+                r.onload = ev => {
+                    const img = document.getElementById('brandImage');
+                    img.src = '';
+                    localStorage.removeItem('brandImageData');
+                    localStorage.removeItem('brandImagePos');
+                    localStorage.removeItem('brandImageWidth');
+                    localStorage.removeItem('brandImageDataBg');
+                    localStorage.removeItem('brandImagePosBg');
+                    localStorage.removeItem('brandImageWidthBg');
+                    img.style.display = 'inline-block';
+                    img.style.left = '20px';
+                    img.style.top = '0px';
+                    img.style.right = 'auto';
+                    img.style.bottom = 'auto';
+                    document.getElementById('brandWidth').value = '120';
+                    img.style.width = '120px';
+                    img.src = ev.target.result;
+                    const isImageMode = (imageModeContainer.style.display === 'block');
+                    if (isImageMode && originalImage) {
+                        moveAndPositionImage(img, imageModeContainer, imageCanvas);
+                    } else {
+                        saveBrandState();
+                        adjustStampPosition();
+                    }
+                    makeElementDraggable(img);
+                };
+                r.readAsDataURL(file);
+            } else alert('仅支持PNG/JPG');
+            brandFile.value = '';
+        };
+        
+        document.getElementById('removeBrandBtn').onclick = () => {
+            const img = document.getElementById('brandImage');
+            img.src = '';
+            img.style.display = 'none';
+            img.style.left = '';
+            img.style.top = '';
+            localStorage.removeItem('brandImageData');
+            localStorage.removeItem('brandImagePos');
+            localStorage.removeItem('brandImageWidth');
+            localStorage.removeItem('brandImageDataBg');
+            localStorage.removeItem('brandImagePosBg');
+            localStorage.removeItem('brandImageWidthBg');
+            document.getElementById('brandWidth').value = '120';
+        };
+        
+        document.getElementById('applyBrandSize').onclick = () => {
+            let w = parseInt(document.getElementById('brandWidth').value) || 120;
+            document.getElementById('brandImage').style.width = w + 'px';
+            const isImageMode = (imageModeContainer.style.display === 'block');
+            if (isImageMode) saveBrandStateBg();
+            else saveBrandState();
+        };
+        
+        document.getElementById('uploadStampBtn').onclick = () => stampFile.click();
+        stampFile.onchange = e => {
+            const file = e.target.files[0];
+            if (file && (file.type === 'image/png' || file.type === 'image/jpeg')) {
+                const r = new FileReader();
+                r.onload = ev => {
+                    const st = document.getElementById('companyStamp');
+                    st.src = '';
+                    localStorage.removeItem('stampImageData');
+                    localStorage.removeItem('stampImagePos');
+                    localStorage.removeItem('stampImageWidth');
+                    localStorage.removeItem('stampImageDataBg');
+                    localStorage.removeItem('stampImagePosBg');
+                    localStorage.removeItem('stampImageWidthBg');
+                    localStorage.removeItem('stampRelativeOffset');
+                    st.style.display = 'inline-block';
+                    const defaultWidth = 150;
+                    st.style.width = defaultWidth + 'px';
+                    document.getElementById('stampWidth').value = defaultWidth;
+                    st.src = ev.target.result;
+                    const isImageMode = (imageModeContainer.style.display === 'block');
+                    if (isImageMode && originalImage) {
+                        moveAndPositionImage(st, imageModeContainer, imageCanvas);
+                    } else {
+                        loadStampOffset();
+                        adjustStampPosition();
+                        saveStampState();
+                    }
+                    makeElementDraggable(st);
+                };
+                r.readAsDataURL(file);
+            } else alert('仅支持PNG/JPG');
+            stampFile.value = '';
+        };
+        
+        document.getElementById('removeStampBtn').onclick = () => {
+            const st = document.getElementById('companyStamp');
+            st.src = '';
+            st.style.display = 'none';
+            st.style.left = '';
+            st.style.top = '';
+            localStorage.removeItem('stampImageData');
+            localStorage.removeItem('stampImagePos');
+            localStorage.removeItem('stampImageWidth');
+            localStorage.removeItem('stampImageDataBg');
+            localStorage.removeItem('stampImagePosBg');
+            localStorage.removeItem('stampImageWidthBg');
+            localStorage.removeItem('stampRelativeOffset');
+            document.getElementById('stampWidth').value = '150';
+        };
+        
+        document.getElementById('applyStampSize').onclick = () => {
+            let w = parseInt(document.getElementById('stampWidth').value) || 150;
+            document.getElementById('companyStamp').style.width = w + 'px';
+            const isImageMode = (imageModeContainer.style.display === 'block');
+            if (isImageMode) saveStampStateBg();
+            else {
+                saveStampState();
+                localStorage.removeItem('stampRelativeOffset');
+                adjustStampPosition();
+            }
+        };
+        
+        restoreBrand();
+        restoreStamp();
+        makeElementDraggable(document.getElementById('brandImage'));
+        makeElementDraggable(document.getElementById('companyStamp'));
+    }
+    
+    function observeTableChanges() {
+        const tableBody = document.getElementById('tableBody');
+        if (!tableBody) return;
+        const observer = new MutationObserver(() => {
+            adjustStampPosition();
+        });
+        observer.observe(tableBody, { childList: true, subtree: true, attributes: true });
+    }
+    
+    // ======================== 导出功能（保存图片、PDF、打印） ========================
+    async function saveImage(){ 
+        const btn=document.getElementById('saveAsImageBtn'), txt=btn.innerText; 
+        btn.innerText='生成中...'; btn.disabled=true; 
+        try{ 
+            const watermarkText = await askWatermark(); 
+            const clone = getCleanClone(true, 0, watermarkText);
+            clone.style.position='absolute'; 
+            clone.style.top='-9999px'; 
+            clone.style.left='0'; 
+            document.body.appendChild(clone); 
+            await new Promise(r => setTimeout(r, 150));
+            const canvas = await html2canvas(clone, { 
+                scale: 3, 
+                backgroundColor: '#ffffff', 
+                logging: false,
+                useCORS: true,
+                allowTaint: false
+            }); 
+            document.body.removeChild(clone); 
+            const link=document.createElement('a'); 
+            link.download=`慧语票据_${document.getElementById('invoiceNo').innerText}.png`; 
+            link.href=canvas.toDataURL(); 
+            link.click(); 
+        }catch(e){ alert('生成图片失败: ' + e.message); }finally{ btn.innerText=txt; btn.disabled=false; } 
+    }
+    
+    async function downloadPDF(){ 
+        const btn=document.getElementById('downloadPdfBtn'), txt=btn.innerText; 
+        btn.innerText='生成PDF...'; btn.disabled=true; 
+        try{ 
+            const watermarkText = await askWatermark(); 
+            const clone = getCleanClone(true, 0, watermarkText);
+            clone.style.position='absolute'; 
+            clone.style.top='-9999px'; 
+            clone.style.left='0'; 
+            document.body.appendChild(clone); 
+            await new Promise(r => setTimeout(r, 150));
+            const canvas = await html2canvas(clone, { 
+                scale: 3, 
+                backgroundColor: '#ffffff', 
+                logging: false,
+                useCORS: true
+            }); 
+            document.body.removeChild(clone); 
+            const imgData = canvas.toDataURL('image/png'); 
+            const { jsPDF } = window.jspdf; 
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }); 
+            const pdfW = pdf.internal.pageSize.getWidth(); 
+            const imgW = canvas.width, imgH = canvas.height; 
+            const ratio = pdfW / imgW; 
+            const imgHmm = imgH * ratio; 
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfW, imgHmm); 
+            pdf.save(`慧语票据_${document.getElementById('invoiceNo').innerText}.pdf`); 
+        }catch(e){ alert('PDF生成失败: ' + e.message); }finally{ btn.innerText=txt; btn.disabled=false; } 
+    }
+    
+    // 打印功能：生成 PDF 并在新窗口中自动弹出打印对话框
+    async function printInvoice() {
+        const btn = document.getElementById('printBtn');
+        const originalText = btn.innerText;
+        btn.innerText = '生成打印文件...';
+        btn.disabled = true;
+        try {
+            const watermarkText = await askWatermark();
+            const clone = getCleanClone(true, 0, watermarkText);
+            clone.style.position = 'absolute';
+            clone.style.top = '-9999px';
+            clone.style.left = '0';
+            document.body.appendChild(clone);
+            await new Promise(r => setTimeout(r, 150));
+            const canvas = await html2canvas(clone, {
+                scale: 3,
+                backgroundColor: '#ffffff',
+                logging: false,
+                useCORS: true
+            });
+            document.body.removeChild(clone);
+            const imgData = canvas.toDataURL('image/png');
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            const ratio = pdfWidth / imgWidth;
+            const pdfHeight = imgHeight * ratio;
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            const pdfBlob = pdf.output('blob');
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            const printWindow = window.open(pdfUrl);
+            if (!printWindow) {
+                alert('请允许弹窗，以便打印。如已阻止，请手动下载PDF后打印。');
+            } else {
+                printWindow.onload = function() {
+                    printWindow.print();
+                    printWindow.onafterprint = function() {
+                        printWindow.close();
+                        URL.revokeObjectURL(pdfUrl);
+                    };
+                };
+            }
+        } catch (e) {
+            alert('生成打印文件失败: ' + e.message);
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }
+    
+    // ======================== 事件绑定与初始化 ========================
+    function bindEvents() {
+        document.getElementById('addItemBtn').onclick=addManual;
+        document.getElementById('clearAllBtn').onclick=clearAll;
+        document.getElementById('saveAsImageBtn').onclick=saveImage;
+        document.getElementById('downloadPdfBtn').onclick=downloadPDF;
+        document.getElementById('printBtn').onclick=printInvoice;
+        document.getElementById('moveUpBtn').onclick=moveUp;
+        document.getElementById('moveDownBtn').onclick=moveDown;
+        document.getElementById('deleteSelectedBtn').onclick=deleteSelected;
+        document.getElementById('loadEditBtn').onclick=loadSelectedToForm;
+        document.getElementById('saveEditBtn').onclick=saveEditToSelected;
+        document.getElementById('parseBtn').onclick=()=>parseBatch();
+        document.getElementById('confirmAddBatchBtn').onclick=confirmAddBatch;
+        document.getElementById('editRemarkBtn').onclick=()=>{ 
+            let v=prompt("编辑备注", document.getElementById('remarkText').innerText); 
+            if(v!==null) document.getElementById('remarkText').innerText=v.trim()||"—"; 
+            saveToLocalStorage(); 
+        };
+        ['editCompany','editPhone','editContact','editSigner','editCustomer'].forEach(id=>document.getElementById(id).addEventListener('input',syncEditableInfo));
+    }
+    
+    function initTabs() { 
+        const tabs = document.querySelectorAll('.tab-btn'); 
+        const panes = document.querySelectorAll('.tab-pane'); 
+        tabs.forEach(btn => { 
+            btn.addEventListener('click', () => { 
+                const target = btn.getAttribute('data-tab'); 
+                tabs.forEach(b => b.classList.remove('active')); 
+                btn.classList.add('active'); 
+                panes.forEach(pane => pane.classList.remove('active-pane')); 
+                document.getElementById(`tab-${target}`).classList.add('active-pane'); 
+            }); 
+        }); 
+    }
+    
+    function init(){ 
+        setInvoiceMeta(); 
+        initTabs(); 
+        bindEvents(); 
+        initImageControls(); 
+        loadWatermarkMemory(); 
+        const hasCache = loadFromLocalStorage(); 
+        if (!hasCache || items.length === 0) { 
+            items.push({ name: "示例商品", unit: "个", qty: 1, price: 0.00, remark: "" }); 
+            selectedIndex = 0; 
+            renderTable(); 
+        } else { 
+            syncEditableInfo(); 
+            renderTable(); 
+        } 
+        adjustStampPosition();
+        observeTableChanges();
+    }
+    init();
+</script>
+</body>
+</html>
