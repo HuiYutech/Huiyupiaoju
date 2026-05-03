@@ -9,7 +9,9 @@
     <style>
         * { box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
         body { background: #eef2f5; font-family: 'Segoe UI','PingFang SC','微软雅黑',Roboto,sans-serif; margin: 0; padding: 0; overflow-x: hidden; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
-        #app-wrapper { width: 794px; transform-origin: top center; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
+        /* 外层容器锁定 831px */
+        #app-wrapper { width: 831px; transform-origin: top center; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
+        /* 内容区统一 794px */
         .invoice-container, .control-panel, .btn-group { width: 794px; }
         .invoice-container { position: relative; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-radius: 20px; padding: 12mm 7px 15mm 7px; margin-bottom: 16px; overflow: visible; user-select: none; -webkit-user-select: none; }
         .normal-content { display: block; }
@@ -216,10 +218,10 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
-    // 智能缩放：宽度小于794时缩小填满，否则保持原样（不放大）
+    // 智能缩放：宽度小于 831 时缩小铺满，否则保持原样
     function resizeApp() {
         const w = window.innerWidth;
-        const scale = Math.min(1, w / 794);
+        const scale = Math.min(1, w / 831);
         appWrapper.style.transform = `scale(${scale})`;
         appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
     }
@@ -593,7 +595,7 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // 水印：600x600画布，28px字体，清晰
+    // 水印正常大小
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
