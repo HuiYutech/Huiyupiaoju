@@ -8,8 +8,8 @@
     <script src="js/jspdf.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
-        body { background: #eef2f5; font-family: 'Segoe UI','PingFang SC','微软雅黑',Roboto,sans-serif; margin: 0; padding: 0; overflow-x: auto; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
-        #app-wrapper { width: 794px; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
+        body { background: #eef2f5; font-family: 'Segoe UI','PingFang SC','微软雅黑',Roboto,sans-serif; margin: 0; padding: 0; overflow-x: hidden; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
+        #app-wrapper { width: 794px; transform-origin: top center; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
         .invoice-container, .control-panel, .btn-group { width: 794px; }
         .invoice-container { position: relative; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-radius: 20px; padding: 12mm 7px 15mm 7px; margin-bottom: 16px; overflow: visible; user-select: none; -webkit-user-select: none; }
         .normal-content { display: block; }
@@ -207,6 +207,7 @@
 </div>
 
 <script>
+    const appWrapper = document.getElementById('app-wrapper');
     const brandImage = document.getElementById('brandImage');
     const companyStamp = document.getElementById('companyStamp');
     const normalContent = document.getElementById('normalContent');
@@ -215,7 +216,16 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
-    // 不再有任何 JS 缩放代码，完全由浏览器根据 viewport 自动处理
+    // 智能缩放：宽度小于794时缩小填满，否则保持原样（不放大），完美竖屏显示
+    function resizeApp() {
+        const w = window.innerWidth;
+        const scale = Math.min(1, w / 794);
+        appWrapper.style.transform = `scale(${scale})`;
+        appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
+    }
+    window.addEventListener('resize', resizeApp);
+    window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
+    window.addEventListener('load', () => setTimeout(resizeApp, 30));
 
     function showToast(msg) {
         if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
@@ -583,6 +593,7 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
+    // 水印正常大小：画布600x600，字体28px
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
@@ -595,11 +606,12 @@
         clone.querySelector('#editRemarkBtn')?.remove();
         if (wmText) {
             let wm = document.createElement('div'); wm.className = 'watermark-layer';
-            let c = document.createElement('canvas'); c.width=400; c.height=400;
+            let c = document.createElement('canvas'); c.width=600; c.height=600;
             let ctx = c.getContext('2d');
-            ctx.font='bold 16px "PingFang SC"'; ctx.fillStyle='#7f8c8d';
-            ctx.translate(200,200); ctx.rotate(-20 * Math.PI / 180);
-            ctx.textAlign='center'; ctx.fillText(wmText,0,0);
+            ctx.font='bold 28px "PingFang SC","微软雅黑"'; ctx.fillStyle='#7f8c8d';
+            ctx.translate(300,300); ctx.rotate(-20 * Math.PI / 180);
+            ctx.textAlign='center'; ctx.textBaseline='middle';
+            ctx.fillText(wmText,0,0);
             wm.style.backgroundImage = `url(${c.toDataURL()})`;
             clone.appendChild(wm);
         }
@@ -682,6 +694,7 @@
         items = [{ name: '示例商品', unit: '个', qty: 1, price: 10.00, remark: '类型A' }];
         selectedIndex = 0; renderTable();
     } else renderTable();
+    resizeApp();
     if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
         try { AndroidBridge.requestStoragePermission(); } catch(e) {}
     }
