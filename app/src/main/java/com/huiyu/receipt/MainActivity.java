@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
         webView.loadUrl("file:///android_asset/index.html");
     }
 
-    // JavaScript 接口
+    // JavaScript 接口类
     public class WebAppInterface {
         private MainActivity mActivity;
 
@@ -94,26 +94,30 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @JavascriptInterface
+        public void requestStoragePermission() {
+            // 用于页面加载时主动请求存储权限（Android 6.0+）
+            if (ContextCompat.checkSelfPermission(mActivity, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(mActivity,
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_CODE);
+            }
+        }
+
+        @JavascriptInterface
         public void onPageLoaded() {
-            // 页面加载完成回调（可留空）
+            // 页面加载完成回调（可忽略）
         }
     }
 
-    // 保存图片/PDF到系统下载目录
+    // 保存文件到系统下载目录
     private void saveFileInternal(String base64Data, String fileName, String mimeType) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_CODE);
-            showToast("请授予存储权限后再试");
-            return;
-        }
-
         try {
+            // 去除 base64 头部 (data:image/png;base64,)
             String pureBase64 = base64Data.contains(",") ? base64Data.split(",")[1] : base64Data;
             byte[] decoded = Base64.decode(pureBase64, Base64.DEFAULT);
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+ 使用 MediaStore
                 ContentValues values = new ContentValues();
                 values.put(MediaStore.Downloads.DISPLAY_NAME, fileName);
                 values.put(MediaStore.Downloads.MIME_TYPE, mimeType);
@@ -123,8 +127,19 @@ public class MainActivity extends AppCompatActivity {
                     OutputStream os = getContentResolver().openOutputStream(uri);
                     os.write(decoded);
                     os.close();
+                    showToast("文件已保存到下载目录");
+                } else {
+                    showToast("保存失败：无法创建文件");
                 }
             } else {
+                // Android 9 及以下使用传统文件存储
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    showToast("请授予存储权限后再试");
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_CODE);
+                    return;
+                }
                 File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
                 if (!dir.exists()) dir.mkdirs();
                 File file = new File(dir, fileName);
@@ -135,8 +150,8 @@ public class MainActivity extends AppCompatActivity {
                 Intent scanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
                 scanIntent.setData(Uri.fromFile(file));
                 sendBroadcast(scanIntent);
+                showToast("文件已保存到下载目录");
             }
-            showToast("文件已保存到下载目录");
         } catch (Exception e) {
             showToast("保存失败：" + e.getMessage());
         }
@@ -168,13 +183,14 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                showToast("权限已授予，请再次点击保存按钮");
+                showToast("权限已授予，可重新保存/打印");
             } else {
                 showToast("存储权限被拒绝，无法保存文件");
             }
         }
     }
 
+    // 辅助 Toast 方法
     private void showToast(String msg) {
         runOnUiThread(() -> Toast.makeText(this, msg, Toast.LENGTH_SHORT).show());
     }
