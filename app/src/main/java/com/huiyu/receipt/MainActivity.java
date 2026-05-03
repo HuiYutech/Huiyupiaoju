@@ -50,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
+        // 沉浸式状态栏
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
             window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
@@ -61,6 +62,8 @@ public class MainActivity extends AppCompatActivity {
         }
         
         webView = new WebView(this);
+        // 关键：设置 WebView 背景色与页面一致，解决横屏左侧露黑/白问题
+        webView.setBackgroundColor(Color.parseColor("#eef2f5"));
         setContentView(webView);
         webView.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);
         setupWebView();
@@ -73,12 +76,14 @@ public class MainActivity extends AppCompatActivity {
         settings.setAllowContentAccess(true);
         settings.setDomStorageEnabled(true);
         
-        // 关键修改：禁止自动缩放和适配
-        settings.setUseWideViewPort(false);        // 不启用宽视口
-        settings.setLoadWithOverviewMode(false);   // 不缩放至屏幕
-        settings.setSupportZoom(false);            // 禁止缩放
-        settings.setBuiltInZoomControls(false);    // 移除缩放控件
-        settings.setDisplayZoomControls(false);    // 不显示缩放按钮
+        // 允许缩放操作（用户可双指缩放）
+        settings.setSupportZoom(true);
+        settings.setBuiltInZoomControls(true);
+        settings.setDisplayZoomControls(false); // 隐藏缩放控件
+        
+        // 让页面适应屏幕宽度，但保留固定宽度794px的初始效果
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);   // 首次加载时缩小至屏幕宽度
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
