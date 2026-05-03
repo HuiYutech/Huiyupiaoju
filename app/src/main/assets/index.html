@@ -2,8 +2,8 @@
 <html lang="zh-CN" style="background:#eef2f5;">
 <head>
     <meta charset="UTF-8">
-    <!-- 固定宽度794，禁止用户手动缩放，禁止自动适配 -->
-    <meta name="viewport" content="width=794, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- 固定宽度794，允许用户缩放，禁止自动适配 -->
+    <meta name="viewport" content="width=794, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>慧语电子票据</title>
     <script src="js/html2canvas.min.js"></script>
     <script src="js/jspdf.umd.min.js"></script>
@@ -231,7 +231,7 @@
     }
     window.addEventListener('resize', resizeApp);
     window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
-    window.addEventListener('load', () => setTimeout(resizeApp, 30));
+    window.addEventListener('load', () => { setTimeout(resizeApp, 30); if (companyStamp.style.display !== 'none' && companyStamp.src) positionStampAtInvoiceNo(); });
 
     function showToast(msg) {
         if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
@@ -349,7 +349,7 @@
         document.getElementById('amountCN').innerHTML = convertCurrency(sub);
     }
 
-    // 商品操作事件绑定
+    // 商品操作事件
     document.getElementById('addItemBtn').onclick = () => {
         let n = document.getElementById('prodName').value.trim(); if (!n) return alert('请输入商品名称');
         items.push({ name: n, unit: document.getElementById('prodUnit').value||'个',
@@ -436,12 +436,31 @@
             localStorage.setItem('stampW', document.getElementById('stampWidth').value);
         }
     }
+    // 公司章定位到单据编号正中间
+    function positionStampAtInvoiceNo() {
+        const invoiceNoEl = document.getElementById('invoiceNo');
+        if (!invoiceNoEl || !companyStamp) return;
+        const rect = invoiceNoEl.getBoundingClientRect();
+        const containerRect = document.getElementById('invoiceContainer').getBoundingClientRect();
+        const stampWidth = parseFloat(companyStamp.style.width) || 150;
+        const stampHeight = stampWidth;
+        const centerX = rect.left + rect.width/2 - containerRect.left - stampWidth/2;
+        const centerY = rect.top + rect.height/2 - containerRect.top - stampHeight/2;
+        companyStamp.style.left = Math.max(0, centerX) + 'px';
+        companyStamp.style.top = Math.max(0, centerY) + 'px';
+    }
     function restoreStamp() {
         let src = localStorage.getItem('stampImg');
         if (src) {
-            companyStamp.src = src; companyStamp.style.display = 'inline-block';
-            let pos = JSON.parse(localStorage.getItem('stampPos')||'{}');
-            companyStamp.style.left = pos.l || '150px'; companyStamp.style.top = pos.t || '80px';
+            companyStamp.src = src;
+            companyStamp.style.display = 'inline-block';
+            let pos = JSON.parse(localStorage.getItem('stampPos') || '{}');
+            if (pos.l && pos.t) {
+                companyStamp.style.left = pos.l;
+                companyStamp.style.top = pos.t;
+            } else {
+                positionStampAtInvoiceNo();
+            }
             document.getElementById('stampWidth').value = localStorage.getItem('stampW')||'150';
             companyStamp.style.width = document.getElementById('stampWidth').value + 'px';
             makeDraggable(companyStamp);
@@ -496,10 +515,9 @@
             reader.onload = ev => {
                 companyStamp.src = ev.target.result;
                 companyStamp.style.display = 'inline-block';
-                companyStamp.style.left = '150px';
-                companyStamp.style.top = '80px';
                 document.getElementById('stampWidth').value = '150';
                 companyStamp.style.width = '150px';
+                positionStampAtInvoiceNo();
                 saveStamp();
                 makeDraggable(companyStamp);
                 placeOverlayInContainer(companyStamp);
@@ -518,6 +536,7 @@
         placeOverlayInContainer(companyStamp);
     }
 
+    // 背景图旋转，A4 容器方向随旋转自适应
     function redrawCanvas() {
         if (!originalImage) return;
         const canvas = imageCanvas, ctx = canvas.getContext('2d');
@@ -610,6 +629,7 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
+    // 导出（去除蓝条、水印、文件名）
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
