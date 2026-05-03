@@ -50,7 +50,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // 沉浸式状态栏
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
             window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
@@ -62,7 +61,6 @@ public class MainActivity extends AppCompatActivity {
         }
         
         webView = new WebView(this);
-        webView.setBackgroundColor(Color.parseColor("#EEF2F5"));   // 背景色与页面一致
         setContentView(webView);
         webView.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);
         setupWebView();
@@ -74,7 +72,6 @@ public class MainActivity extends AppCompatActivity {
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setDomStorageEnabled(true);
-        // 以下两个设置保证页面加载时自动缩放到屏幕宽度（如同双击效果）
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setBuiltInZoomControls(true);
