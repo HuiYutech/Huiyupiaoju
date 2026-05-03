@@ -9,9 +9,7 @@
     <style>
         * { box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
         body { background: #eef2f5; font-family: 'Segoe UI','PingFang SC','微软雅黑',Roboto,sans-serif; margin: 0; padding: 0; overflow-x: hidden; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
-        /* 外层容器锁定 831px */
-        #app-wrapper { width: 831px; transform-origin: top center; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
-        /* 内容区统一 794px */
+        #app-wrapper { width: 794px; transform-origin: top center; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
         .invoice-container, .control-panel, .btn-group { width: 794px; }
         .invoice-container { position: relative; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-radius: 20px; padding: 12mm 7px 15mm 7px; margin-bottom: 16px; overflow: visible; user-select: none; -webkit-user-select: none; }
         .normal-content { display: block; }
@@ -20,7 +18,7 @@
         .image-mode-container .brand-overlay, .image-mode-container .company-stamp { position: absolute; z-index: 30; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; display: inline-block; }
         .image-control-bar-external { margin-top: 10px; display: none; justify-content: center; gap: 8px; background: rgba(0,0,0,0.65); padding: 6px 12px; border-radius: 40px; flex-wrap: wrap; }
         .image-control-bar-external button { background: white; border: none; padding: 5px 12px; border-radius: 32px; font-size: 13px; font-weight: bold; cursor: pointer; }
-        .watermark-layer { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10000; background-repeat:repeat; background-size:220px 220px; opacity:0.25; }
+        .watermark-layer { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10000; background-repeat:repeat; background-size:180px 180px; opacity:0.30; }
         .brand-overlay, .company-stamp { position: absolute; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
         .brand-overlay { z-index: 20; border-radius: 6px; opacity: 0.9; }
         .company-stamp { z-index: 9999; opacity: 0.85; display: none; }
@@ -218,12 +216,17 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
-    // 智能缩放：宽度小于 831 时缩小铺满，否则保持原样
+    // 智能缩放：宽度小于794时缩小铺满，否则保持原样；缩不了弹窗提示
     function resizeApp() {
-        const w = window.innerWidth;
-        const scale = Math.min(1, w / 831);
-        appWrapper.style.transform = `scale(${scale})`;
-        appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
+        try {
+            const w = window.innerWidth;
+            if (typeof w !== 'number' || isNaN(w)) throw new Error('无法获取屏幕宽度');
+            const scale = Math.min(1, w / 794);
+            appWrapper.style.transform = `scale(${scale})`;
+            appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
+        } catch (e) {
+            showToast('页面缩放失败：' + e.message + '，请尝试旋转屏幕或重启应用');
+        }
     }
     window.addEventListener('resize', resizeApp);
     window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
@@ -595,7 +598,7 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // 水印正常大小
+    // 水印：画布800x800，字体40px，更密集更大
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
@@ -608,10 +611,10 @@
         clone.querySelector('#editRemarkBtn')?.remove();
         if (wmText) {
             let wm = document.createElement('div'); wm.className = 'watermark-layer';
-            let c = document.createElement('canvas'); c.width=600; c.height=600;
+            let c = document.createElement('canvas'); c.width=800; c.height=800;
             let ctx = c.getContext('2d');
-            ctx.font='bold 28px "PingFang SC","微软雅黑"'; ctx.fillStyle='#7f8c8d';
-            ctx.translate(300,300); ctx.rotate(-20 * Math.PI / 180);
+            ctx.font='bold 40px "PingFang SC","微软雅黑"'; ctx.fillStyle='#7f8c8d';
+            ctx.translate(400,400); ctx.rotate(-25 * Math.PI / 180);
             ctx.textAlign='center'; ctx.textBaseline='middle';
             ctx.fillText(wmText,0,0);
             wm.style.backgroundImage = `url(${c.toDataURL()})`;
