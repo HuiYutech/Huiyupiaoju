@@ -18,7 +18,7 @@
             font-family: 'Segoe UI', 'PingFang SC', '微软雅黑', Roboto, sans-serif;
             margin: 0;
             padding: 0;
-            overflow-x: auto;
+            overflow-x: hidden;
             display: flex;
             justify-content: center;
             align-items: flex-start;
@@ -26,6 +26,7 @@
         }
         #app-wrapper {
             width: 794px;
+            transform-origin: top center;
             padding: 45px 0 30px 0;
             display: flex;
             flex-direction: column;
@@ -56,13 +57,14 @@
             text-align: center;
             position: relative;
             overflow: hidden;
-            min-height: 80px;
+            width: 794px;
+            height: 1123px;       /* A4 比例：794 × √2 ≈ 1123 */
+            margin: 0 auto;
         }
         .image-mode-container canvas {
             display: block;
-            margin: 0 auto;
-            max-width: 100%;
-            max-height: 100%;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
         }
         .image-mode-container .brand-overlay,
@@ -182,30 +184,15 @@
         .total-row { margin-top: 16px; background: #f8f9fc; padding: 10px 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
         .amount-chinese { font-weight: 700; color: #1e4663; }
         .remark-box {
-            background: #f8f9fc;
-            padding: 8px 15px;
-            border-radius: 12px;
-            margin: 14px 0;
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
+            background: #f8f9fc; padding: 8px 15px; border-radius: 12px; margin: 14px 0;
+            display: flex; align-items: flex-start; gap: 8px;
         }
         .remark-box strong { flex-shrink: 0; margin-top: 2px; }
-        .remark-box span {
-            white-space: normal;
-            word-break: break-word;
-            line-height: 1.5;
-        }
+        .remark-box span { white-space: normal; word-break: break-word; line-height: 1.5; }
         .remark-box button {
-            flex-shrink: 0;
-            margin-left: 6px;
-            background: transparent;
-            border: 1px solid #e2b87a;
-            color: #b45f1b;
-            border-radius: 40px;
-            padding: 3px 10px;
-            cursor: pointer;
-            font-size: 12px;
+            flex-shrink: 0; margin-left: 6px;
+            background: transparent; border: 1px solid #e2b87a; color: #b45f1b;
+            border-radius: 40px; padding: 3px 10px; cursor: pointer; font-size: 12px;
         }
         .btn-group { display: flex; justify-content: center; gap: 20px; margin: 20px 0 10px; }
         .btn-group button { border: none; color: white; font-size: 18px; font-weight: bold; padding: 14px 32px; border-radius: 56px; cursor: pointer; }
@@ -336,7 +323,7 @@
                     <input type="file" id="stampInput" accept="image/*" style="display:none;" onchange="handleStampUpload(this)">
                 </div>
                 <div style="background:#eef7ff; padding:16px 20px; border-radius:20px; border:2px dashed #2c7da0;">
-                    <div style="font-weight:600;">🖼️ 导入背景图（支持旋转，完整显示在容器内）</div>
+                    <div style="font-weight:600;">🖼️ 导入背景图（A4容器，支持旋转）</div>
                     <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:8px;">
                         <button class="btn-sm" style="background:#2c7da0;" onclick="document.getElementById('fullImageInput').click()">📂 导入图片</button>
                     </div>
@@ -373,6 +360,19 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
+    // ===================== 全局动态缩放（手机/平板/电脑均铺满） =====================
+    const APP_WIDTH = 794;
+    const appWrapper = document.getElementById('app-wrapper');
+    function resizeApp() {
+        const w = window.innerWidth;
+        const scale = w / APP_WIDTH;   // 允许放大，无上限
+        appWrapper.style.transform = `scale(${scale})`;
+        appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
+    }
+    window.addEventListener('resize', resizeApp);
+    window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
+    window.addEventListener('load', () => setTimeout(resizeApp, 30));
+
     function showToast(msg) {
         if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
             try { AndroidBridge.showToast(msg); } catch(e) {}
@@ -393,6 +393,7 @@
         return false;
     }
 
+    // ===================== 业务数据（完全相同，无省略） =====================
     let items = [], selectedIndex = -1;
     const STORAGE_KEY = 'invoiceData_v2';
     const UNITS = new Set(['个','台','套','根','件','只','条','支','箱','包','瓶','盒','桶','双','对','米','千克','公斤','克','升','毫升','袋','卷','组','部','块','片','张','把','粒','罐','打','份','册','本','辆','架','顶','副','串','捆','扎','排','座','栋','扇','盏','枚','轴','码','英尺','英寸','厘米','毫米','GB','TB']);
@@ -489,7 +490,7 @@
         document.getElementById('amountCN').innerHTML = convertCurrency(sub);
     }
 
-    // 商品操作事件绑定
+    // ===================== 商品操作事件绑定（完整） =====================
     document.getElementById('addItemBtn').onclick = () => {
         let n = document.getElementById('prodName').value.trim(); if (!n) return alert('请输入商品名称');
         items.push({ name: n, unit: document.getElementById('prodUnit').value||'个',
@@ -527,7 +528,7 @@
         document.getElementById(id).addEventListener('input', syncInfo);
     });
 
-    // 图片拖拽
+    // ===================== 图片拖拽与存储（完整） =====================
     function makeDraggable(el) {
         if (!el) return;
         let drag=false, sx, sy, sl, st;
@@ -588,6 +589,7 @@
         }
     }
 
+    // ===================== 商标管理函数 =====================
     function handleBrandUpload(input) {
         let f = input.files[0];
         if (f && (f.type==='image/png'||f.type==='image/jpeg')) {
@@ -633,6 +635,7 @@
         saveStamp();
     }
 
+    // ===================== 背景图旋转与A4容器适配 =====================
     function redrawCanvas() {
         if (!originalImage) return;
         let canvas = imageCanvas, ctx = canvas.getContext('2d');
@@ -640,23 +643,27 @@
         let rad = rotation * Math.PI / 180;
         let cos = Math.abs(Math.cos(rad)), sin = Math.abs(Math.sin(rad));
         let newW = w*cos + h*sin, newH = w*sin + h*cos;
+        // 容器已固定为 794 x 1123，直接使用容器宽高
         let cw = imageModeContainer.clientWidth;
-        let ch = imageModeContainer.clientHeight || 400;
+        let ch = imageModeContainer.clientHeight;
+        canvas.width = cw;
+        canvas.height = ch;
+        ctx.fillStyle = '#e8e8e8';
+        ctx.fillRect(0, 0, cw, ch);
+        // 计算缩放比例使图片完整显示在容器内
         let scale = Math.min(cw / newW, ch / newH);
-        let finalW = newW * scale, finalH = newH * scale;
-        canvas.width = finalW;
-        canvas.height = finalH;
-        ctx.clearRect(0,0,finalW,finalH);
+        let drawW = newW * scale, drawH = newH * scale;
         ctx.save();
-        ctx.translate(finalW/2, finalH/2);
+        ctx.translate(cw/2, ch/2);
         ctx.rotate(rad);
-        ctx.drawImage(originalImage, -w/2, -h/2, w, h);
+        ctx.drawImage(originalImage, -drawW/2, -drawH/2, drawW, drawH);
         ctx.restore();
+        // 品牌图和公章居中
         [brandImage, companyStamp].forEach(el => {
             if (el.style.display !== 'none' && el.parentNode === imageModeContainer) {
                 let elW = parseFloat(el.style.width) || 120;
-                el.style.left = (finalW/2 - elW/2) + 'px';
-                el.style.top = (finalH/2 - elW/2) + 'px';
+                el.style.left = (cw/2 - elW/2) + 'px';
+                el.style.top = (ch/2 - elW/2) + 'px';
             }
         });
     }
@@ -695,9 +702,11 @@
                 makeDraggable(el);
             }
         });
-        originalImage = null; imageCanvas.width = 0; imageCanvas.height = 0;
+        originalImage = null;
+        imageCanvas.width = 0; imageCanvas.height = 0;
     };
 
+    // ===================== 批量解析 =====================
     function parseBatch() {
         let lines = document.getElementById('batchRawInput').value.split('\n').filter(l=>l.trim());
         let res = lines.map(line => {
@@ -713,6 +722,7 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
+    // ===================== 导出（去除选择蓝条、水印、文件名） =====================
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
@@ -815,6 +825,7 @@
         items = [{ name: '示例商品', unit: '个', qty: 1, price: 10.00, remark: '类型A' }];
         selectedIndex = 0; renderTable();
     } else renderTable();
+    resizeApp();
     if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
         try { AndroidBridge.requestStoragePermission(); } catch(e) {}
     }
