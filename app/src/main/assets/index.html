@@ -215,7 +215,7 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
-    // 无 JS 缩放，由 WebView 的 setUseWideViewPort(true) 统一处理
+    // 注意：不再需要 resizeApp，缩放完全由 WebView 设置处理
 
     function showToast(msg) {
         if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
