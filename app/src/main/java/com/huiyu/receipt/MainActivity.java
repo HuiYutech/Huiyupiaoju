@@ -101,7 +101,6 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             }
             
-            // 去除对话框中的 file:// 网址提示
             @Override
             public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
                 new AlertDialog.Builder(MainActivity.this)
@@ -232,11 +231,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // 静默授予，不提示
-            }
-        }
+        // 不再显示被拒绝的提示
     }
 
     @Override
