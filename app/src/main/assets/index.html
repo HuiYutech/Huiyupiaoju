@@ -216,10 +216,10 @@
     const appWrapper = document.getElementById('app-wrapper');
     let originalImage = null, rotation = 0;
 
-    // 动态缩放：屏幕宽度小于 1024px 时缩小页面至全屏（覆盖手机横屏），平板/电脑不缩放
+    // 强制缩放：仅当屏幕宽度小于 794px 时缩放至全屏，否则保持原样（平板/电脑794px居中）
     function resizeApp() {
         const w = window.innerWidth;
-        if (w < 1024) {
+        if (w < 794) {
             const scale = w / 794;
             appWrapper.style.transform = `scale(${scale})`;
             appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
