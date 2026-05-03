@@ -66,8 +66,9 @@ public class MainActivity extends AppCompatActivity {
         
         webView = new WebView(this);
         webView.setBackgroundColor(Color.parseColor("#eef2f5"));
+        // 核心修复：让滚动条浮在内容上方，不占用布局宽度
+        webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
         setContentView(webView);
-        webView.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);
         setupWebView();
     }
 
@@ -78,12 +79,11 @@ public class MainActivity extends AppCompatActivity {
         settings.setAllowContentAccess(true);
         settings.setDomStorageEnabled(true);
         
-        // 允许用户手动缩放
+        // 允许缩放
         settings.setSupportZoom(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
         
-        // 使用视口设置，自动适配
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
 
