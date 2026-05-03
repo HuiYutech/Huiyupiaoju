@@ -2,7 +2,6 @@
 <html lang="zh-CN" style="background:#eef2f5;">
 <head>
     <meta charset="UTF-8">
-    <!-- 固定宽度794，允许用户缩放，禁止自动适配 -->
     <meta name="viewport" content="width=794, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>慧语电子票据</title>
     <script src="js/html2canvas.min.js"></script>
@@ -217,10 +216,10 @@
     const appWrapper = document.getElementById('app-wrapper');
     let originalImage = null, rotation = 0;
 
-    // 动态缩放：手机屏幕宽度 < 794px 时缩小页面至屏幕宽
+    // 动态缩放：屏幕宽度小于 1024px 时缩小页面至全屏（覆盖手机横屏），平板/电脑不缩放
     function resizeApp() {
         const w = window.innerWidth;
-        if (w < 794) {
+        if (w < 1024) {
             const scale = w / 794;
             appWrapper.style.transform = `scale(${scale})`;
             appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
@@ -660,10 +659,12 @@
             if (!confirm('是否添加防伪水印？')) { resolve(null); return; }
             let def = localStorage.getItem('lastWatermark_v2') || 'XX示例水印';
             let inp = prompt('水印文字(最多18字)', def);
-            if (!inp) { resolve(null); return; }
+            if (inp === null) { resolve(null); return; }
             let t = inp.trim();
-            if (t && t.length <= 18) { localStorage.setItem('lastWatermark_v2', t); resolve(t); }
-            else { alert('无效'); resolve(null); }
+            if (!t) { alert('水印内容不能为空'); resolve(null); return; }
+            if (t.length > 18) { alert('水印文字超过18个字符，请重新输入。'); resolve(null); return; }
+            localStorage.setItem('lastWatermark_v2', t);
+            resolve(t);
         });
     }
     function getTimestamp() {
