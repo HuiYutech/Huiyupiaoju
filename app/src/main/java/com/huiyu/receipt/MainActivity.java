@@ -62,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
         }
         
         webView = new WebView(this);
-        // 关键：设置 WebView 背景色与页面一致，解决横屏左侧露黑/白问题
+        // 设置 WebView 背景色与网页一致，解决横屏左侧露出白色的问题
         webView.setBackgroundColor(Color.parseColor("#eef2f5"));
         setContentView(webView);
         webView.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);
@@ -76,14 +76,14 @@ public class MainActivity extends AppCompatActivity {
         settings.setAllowContentAccess(true);
         settings.setDomStorageEnabled(true);
         
-        // 允许缩放操作（用户可双指缩放）
+        // 允许用户缩放
         settings.setSupportZoom(true);
         settings.setBuiltInZoomControls(true);
-        settings.setDisplayZoomControls(false); // 隐藏缩放控件
+        settings.setDisplayZoomControls(false);
         
         // 让页面适应屏幕宽度，但保留固定宽度794px的初始效果
         settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(true);   // 首次加载时缩小至屏幕宽度
+        settings.setLoadWithOverviewMode(true);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
@@ -195,7 +195,9 @@ public class MainActivity extends AppCompatActivity {
                     os.write(decoded);
                     os.close();
                     showToast("文件已保存到下载目录");
-                } else showToast("保存失败");
+                } else {
+                    showToast("保存失败");
+                }
             } else {
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                         != PackageManager.PERMISSION_GRANTED) {
@@ -210,6 +212,7 @@ public class MainActivity extends AppCompatActivity {
                 FileOutputStream fos = new FileOutputStream(file);
                 fos.write(decoded);
                 fos.close();
+                // 通知图库刷新
                 Intent scanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
                 scanIntent.setData(Uri.fromFile(file));
                 sendBroadcast(scanIntent);
@@ -229,7 +232,9 @@ public class MainActivity extends AppCompatActivity {
                 PrintHelper photoPrinter = new PrintHelper(this);
                 photoPrinter.setScaleMode(PrintHelper.SCALE_MODE_FILL);
                 photoPrinter.printBitmap("慧语电子票据", bitmap);
-            } else showToast("需要 Android 4.4+");
+            } else {
+                showToast("打印功能需要 Android 4.4 或更高版本");
+            }
         } catch (Exception e) {
             showToast("打印失败：" + e.getMessage());
         }
@@ -238,6 +243,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 权限已授予，此处不提示，静默处理
+            }
+        }
     }
 
     @Override
