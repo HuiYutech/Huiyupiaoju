@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="viewport" content="width=794, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>慧语电子票据</title>
     <script src="js/html2canvas.min.js"></script>
     <script src="js/jspdf.umd.min.js"></script>
@@ -335,19 +335,13 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
-    // ===================== 动态缩放逻辑 =====================
+    // ===================== 视觉缩放 =====================
     function resizeApp() {
         const w = window.innerWidth;
-        if (w < 794) {
-            // 手机端：缩放至屏幕宽度，只显示功能区，无左右留白
-            const scale = w / 794;
-            appWrapper.style.transform = `scale(${scale})`;
-            appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
-        } else {
-            // 平板端及以上：不缩放，保持原宽度
-            appWrapper.style.transform = 'none';
-            appWrapper.style.marginBottom = '0';
-        }
+        const base = 794;
+        const scale = w / base;
+        appWrapper.style.transform = `scale(${scale})`;
+        appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
     }
     window.addEventListener('resize', resizeApp);
     window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
@@ -377,7 +371,6 @@
     // ===================== 业务数据 =====================
     let items = [], selectedIndex = -1;
     const STORAGE_KEY = 'invoiceData_v2';
-
     function saveData() {
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify({
             items, selectedIndex,
@@ -462,8 +455,7 @@
 
     // ===================== 商品操作事件 =====================
     document.getElementById('addItemBtn').onclick = () => {
-        let n = document.getElementById('prodName').value.trim();
-        if (!n) return alert('请输入商品名称');
+        let n = document.getElementById('prodName').value.trim(); if (!n) return alert('请输入商品名称');
         items.push({ name: n, unit: document.getElementById('prodUnit').value||'个',
             qty: parseFloat(document.getElementById('prodQty').value)||1,
             price: parseFloat(document.getElementById('prodPrice').value)||0,
@@ -690,7 +682,7 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // ===================== 导出（强制固定宽度） =====================
+    // ===================== 导出（含水印，固定宽度） =====================
     async function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
