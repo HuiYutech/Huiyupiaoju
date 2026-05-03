@@ -72,11 +72,13 @@ public class MainActivity extends AppCompatActivity {
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setDomStorageEnabled(true);
-        settings.setLoadWithOverviewMode(true);
-        settings.setUseWideViewPort(true);
-        settings.setBuiltInZoomControls(true);
-        settings.setDisplayZoomControls(false);
-        settings.setSupportZoom(true);
+        
+        // 关键修改：禁止自动缩放和适配
+        settings.setUseWideViewPort(false);        // 不启用宽视口
+        settings.setLoadWithOverviewMode(false);   // 不缩放至屏幕
+        settings.setSupportZoom(false);            // 禁止缩放
+        settings.setBuiltInZoomControls(false);    // 移除缩放控件
+        settings.setDisplayZoomControls(false);    // 不显示缩放按钮
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
@@ -231,7 +233,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        // 静默处理
     }
 
     @Override
