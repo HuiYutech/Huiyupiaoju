@@ -3,7 +3,9 @@ package com.huiyu.receipt;
 import android.Manifest;
 import android.content.ContentValues;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -46,7 +48,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // 沉浸式状态栏：使状态栏透明并融合内容
+        // 判断设备是否为平板（最小宽度 >= 600dp），强制横屏；手机保持默认
+        if (isTablet()) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        }
+        
+        // 沉浸式状态栏
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
             window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
@@ -59,8 +66,14 @@ public class MainActivity extends AppCompatActivity {
         
         webView = new WebView(this);
         setContentView(webView);
-        webView.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);   // 滚动条不占宽度
+        webView.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);
         setupWebView();
+    }
+
+    // 判断是否为平板设备（最小宽度 >= 600dp）
+    private boolean isTablet() {
+        Configuration config = getResources().getConfiguration();
+        return config.smallestScreenWidthDp >= 600;
     }
 
     private void setupWebView() {
