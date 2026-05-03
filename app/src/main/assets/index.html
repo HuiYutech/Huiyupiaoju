@@ -26,7 +26,7 @@
         }
         #app-wrapper {
             width: 794px;
-            padding: 45px 0 30px 0;   /* 顶部增加12mm(≈45px) */
+            padding: 45px 0 30px 0;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -62,8 +62,8 @@
             display: block;
             margin: 0 auto;
             max-width: 100%;
-            height: auto;
-            background: #fff;
+            max-height: 100%;
+            object-fit: contain;
         }
         .image-mode-container .brand-overlay,
         .image-mode-container .company-stamp {
@@ -143,7 +143,7 @@
         .form-row { display: flex; gap: 12px; align-items: flex-end; }
         .form-field { flex: 1; min-width: 0; }
         .form-field label { font-size: 14px; font-weight: 600; color: #4a627a; display: block; margin-bottom: 4px; }
-        .form-field input, .form-field select { width: 100%; padding: 10px 14px; border-radius: 32px; border: 1px solid #cddfe7; font-size: 14px; }
+        .form-field input { width: 100%; padding: 10px 14px; border-radius: 32px; border: 1px solid #cddfe7; font-size: 14px; }
         .add-btn { background: #2c7da0; color: white; border: none; padding: 10px 24px; border-radius: 32px; font-weight: bold; cursor: pointer; height: 42px; display: inline-flex; align-items: center; white-space: nowrap; }
         .action-buttons { background: #fefcf5; border-radius: 20px; padding: 20px; border: 1px solid #e9e5d5; display: flex; gap: 20px; margin-top: 16px; }
         .btn-group-row { flex: 1; display: flex; flex-direction: column; gap: 12px; background: #fff; border-radius: 16px; padding: 16px; border: 1px solid #edf2f7; }
@@ -182,12 +182,31 @@
         .total-row { margin-top: 16px; background: #f8f9fc; padding: 10px 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
         .amount-chinese { font-weight: 700; color: #1e4663; }
         .remark-box {
-            background: #f8f9fc; padding: 8px 15px; border-radius: 12px; margin: 14px 0;
-            display: flex; align-items: center; gap: 8px; flex-wrap: nowrap;
+            background: #f8f9fc;
+            padding: 8px 15px;
+            border-radius: 12px;
+            margin: 14px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
         }
-        .remark-box strong { flex-shrink: 0; }
-        .remark-box span { flex: 1; white-space: normal; word-break: break-word; }
-        .remark-box button { flex-shrink: 0; margin-left: 8px; }  /* 紧贴内容，不移到右侧 */
+        .remark-box strong { flex-shrink: 0; margin-top: 2px; }
+        .remark-box span {
+            white-space: normal;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+        .remark-box button {
+            flex-shrink: 0;
+            margin-left: 6px;
+            background: transparent;
+            border: 1px solid #e2b87a;
+            color: #b45f1b;
+            border-radius: 40px;
+            padding: 3px 10px;
+            cursor: pointer;
+            font-size: 12px;
+        }
         .btn-group { display: flex; justify-content: center; gap: 20px; margin: 20px 0 10px; }
         .btn-group button { border: none; color: white; font-size: 18px; font-weight: bold; padding: 14px 32px; border-radius: 56px; cursor: pointer; }
         #saveAsImageBtn { background: #2c7da0; }
@@ -233,8 +252,7 @@
             </div>
             <div class="remark-box" id="remarkBox">
                 <strong>备 注：</strong>
-                <span id="remarkText">示例交易内容，仅供参考。</span>
-                <button id="editRemarkBtn" style="background:transparent; border:1px solid #e2b87a; color:#b45f1b; border-radius:40px; padding:3px 10px; cursor:pointer;">✎ 编辑</button>
+                <span id="remarkText">示例交易内容，仅供参考。<button id="editRemarkBtn">✎ 编辑</button></span>
             </div>
             <div style="display:flex; justify-content:space-between; margin-top:24px; border-top:2px solid #3c5a6f; padding-top:16px;">
                 <span id="signerName">制单人：示例先生</span>
@@ -318,7 +336,7 @@
                     <input type="file" id="stampInput" accept="image/*" style="display:none;" onchange="handleStampUpload(this)">
                 </div>
                 <div style="background:#eef7ff; padding:16px 20px; border-radius:20px; border:2px dashed #2c7da0;">
-                    <div style="font-weight:600;">🖼️ 导入背景图（支持旋转，自动填满容器）</div>
+                    <div style="font-weight:600;">🖼️ 导入背景图（支持旋转，完整显示在容器内）</div>
                     <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:8px;">
                         <button class="btn-sm" style="background:#2c7da0;" onclick="document.getElementById('fullImageInput').click()">📂 导入图片</button>
                     </div>
@@ -347,7 +365,6 @@
 </div>
 
 <script>
-    // ===================== 全局引用 =====================
     const brandImage = document.getElementById('brandImage');
     const companyStamp = document.getElementById('companyStamp');
     const normalContent = document.getElementById('normalContent');
@@ -356,7 +373,6 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
-    // ===================== Android 桥接 =====================
     function showToast(msg) {
         if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
             try { AndroidBridge.showToast(msg); } catch(e) {}
@@ -377,9 +393,10 @@
         return false;
     }
 
-    // ===================== 业务数据 =====================
     let items = [], selectedIndex = -1;
     const STORAGE_KEY = 'invoiceData_v2';
+    const UNITS = new Set(['个','台','套','根','件','只','条','支','箱','包','瓶','盒','桶','双','对','米','千克','公斤','克','升','毫升','袋','卷','组','部','块','片','张','把','粒','罐','打','份','册','本','辆','架','顶','副','串','捆','扎','排','座','栋','扇','盏','枚','轴','码','英尺','英寸','厘米','毫米','GB','TB']);
+
     function saveData() {
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify({
             items, selectedIndex,
@@ -388,7 +405,7 @@
             contact: document.getElementById('editContact').value,
             signer: document.getElementById('editSigner').value,
             customer: document.getElementById('editCustomer').value,
-            remark: document.getElementById('remarkText').innerText
+            remark: document.getElementById('remarkText').innerText.replace(/✎ 编辑/g,'').trim()
         })); } catch(e) {}
     }
     function loadData() {
@@ -402,9 +419,18 @@
             document.getElementById('editContact').value = d.contact || '示例先生';
             document.getElementById('editSigner').value = d.signer || '示例先生';
             document.getElementById('editCustomer').value = d.customer || 'XX示例公司';
-            document.getElementById('remarkText').innerText = d.remark || '示例交易内容，仅供参考。';
+            updateRemark(d.remark || '示例交易内容，仅供参考。');
             syncInfo(); renderTable(); return true;
         } catch(e) { return false; }
+    }
+    function updateRemark(text) {
+        const span = document.getElementById('remarkText');
+        span.innerHTML = `${text}<button id="editRemarkBtn">✎ 编辑</button>`;
+        document.getElementById('editRemarkBtn').onclick = () => {
+            let v = prompt('编辑备注', text);
+            if (v !== null) updateRemark(v.trim() || '—');
+            saveData();
+        };
     }
     function syncInfo() {
         document.querySelector('.company-title').innerText = document.getElementById('editCompany').value || '销售单';
@@ -463,7 +489,7 @@
         document.getElementById('amountCN').innerHTML = convertCurrency(sub);
     }
 
-    // ===================== 商品操作事件 =====================
+    // 商品操作事件绑定
     document.getElementById('addItemBtn').onclick = () => {
         let n = document.getElementById('prodName').value.trim(); if (!n) return alert('请输入商品名称');
         items.push({ name: n, unit: document.getElementById('prodUnit').value||'个',
@@ -497,16 +523,11 @@
         };
         renderTable();
     };
-    document.getElementById('editRemarkBtn').onclick = () => {
-        let v = prompt('编辑备注', document.getElementById('remarkText').innerText);
-        if (v !== null) document.getElementById('remarkText').innerText = v || '—';
-        saveData();
-    };
     ['editCompany','editPhone','editContact','editSigner','editCustomer'].forEach(id => {
         document.getElementById(id).addEventListener('input', syncInfo);
     });
 
-    // ===================== 图片拖拽与存储 =====================
+    // 图片拖拽
     function makeDraggable(el) {
         if (!el) return;
         let drag=false, sx, sy, sl, st;
@@ -567,7 +588,6 @@
         }
     }
 
-    // ===================== 商标管理函数 =====================
     function handleBrandUpload(input) {
         let f = input.files[0];
         if (f && (f.type==='image/png'||f.type==='image/jpeg')) {
@@ -613,7 +633,6 @@
         saveStamp();
     }
 
-    // ===================== 背景图旋转并居中品牌图/公章 =====================
     function redrawCanvas() {
         if (!originalImage) return;
         let canvas = imageCanvas, ctx = canvas.getContext('2d');
@@ -621,23 +640,23 @@
         let rad = rotation * Math.PI / 180;
         let cos = Math.abs(Math.cos(rad)), sin = Math.abs(Math.sin(rad));
         let newW = w*cos + h*sin, newH = w*sin + h*cos;
-        // 画布宽度等于容器宽度，使图片填满
         let cw = imageModeContainer.clientWidth;
-        let ch = (cw / newW) * newH;
-        canvas.width = cw;
-        canvas.height = ch;
-        ctx.clearRect(0,0,cw,ch);
+        let ch = imageModeContainer.clientHeight || 400;
+        let scale = Math.min(cw / newW, ch / newH);
+        let finalW = newW * scale, finalH = newH * scale;
+        canvas.width = finalW;
+        canvas.height = finalH;
+        ctx.clearRect(0,0,finalW,finalH);
         ctx.save();
-        ctx.translate(cw/2, ch/2);
+        ctx.translate(finalW/2, finalH/2);
         ctx.rotate(rad);
         ctx.drawImage(originalImage, -w/2, -h/2, w, h);
         ctx.restore();
-        // 品牌图和公章始终居中于容器
         [brandImage, companyStamp].forEach(el => {
             if (el.style.display !== 'none' && el.parentNode === imageModeContainer) {
                 let elW = parseFloat(el.style.width) || 120;
-                el.style.left = (cw/2 - elW/2) + 'px';
-                el.style.top = (ch/2 - elW/2) + 'px';
+                el.style.left = (finalW/2 - elW/2) + 'px';
+                el.style.top = (finalH/2 - elW/2) + 'px';
             }
         });
     }
@@ -652,7 +671,6 @@
                     normalContent.style.display = 'none';
                     imageModeContainer.style.display = 'block';
                     controlBar.style.display = 'flex';
-                    // 将品牌图和公章移入背景图容器，并确保它们在最上层
                     [brandImage, companyStamp].forEach(el => {
                         if (el.style.display !== 'none') {
                             imageModeContainer.appendChild(el);
@@ -680,7 +698,6 @@
         originalImage = null; imageCanvas.width = 0; imageCanvas.height = 0;
     };
 
-    // ===================== 批量解析 =====================
     function parseBatch() {
         let lines = document.getElementById('batchRawInput').value.split('\n').filter(l=>l.trim());
         let res = lines.map(line => {
@@ -696,11 +713,9 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // ===================== 导出（水印必询问，文件名含公司名称和时间） =====================
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
-        // 移除选中的蓝条
         clone.querySelectorAll('.selected-row').forEach(r => r.classList.remove('selected-row'));
         clone.style.width = '794px';
         clone.style.position = 'absolute';
@@ -730,8 +745,8 @@
             let inp = prompt('请输入水印文字（最多18个字符）:', def);
             if (inp === null) { resolve(null); return; }
             let t = inp.trim();
-            if (!t) { alert('水印内容不能为空，将不添加水印。'); resolve(null); return; }
-            if (t.length > 18) { alert('水印文字超过18个字符，请重新输入。'); resolve(null); return; }
+            if (!t) { alert('水印内容不能为空'); resolve(null); return; }
+            if (t.length > 18) { alert('最多18个字符'); resolve(null); return; }
             localStorage.setItem('lastWatermark_v2', t);
             resolve(t);
         });
@@ -785,7 +800,6 @@
         finally { btn.disabled = false; btn.innerText = '📄 下载 PDF'; }
     }
 
-    // ===================== 标签切换 =====================
     document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
@@ -793,10 +807,10 @@
         document.getElementById('tab-' + b.dataset.tab).classList.add('active-pane');
     }));
 
-    // ===================== 启动 =====================
     setInvoiceMeta();
     restoreBrand();
     restoreStamp();
+    updateRemark('示例交易内容，仅供参考。');
     if (!loadData()) {
         items = [{ name: '示例商品', unit: '个', qty: 1, price: 10.00, remark: '类型A' }];
         selectedIndex = 0; renderTable();
