@@ -3,9 +3,7 @@ package com.huiyu.receipt;
 import android.Manifest;
 import android.content.ContentValues;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -19,6 +17,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.JsResult;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -48,12 +47,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // 判断设备是否为平板（最小宽度 >= 600dp），强制横屏；手机保持默认
-        if (isTablet()) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        }
-        
-        // 沉浸式状态栏
+        // 沉浸式状态栏，横屏同样生效
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
             window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
@@ -68,12 +62,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(webView);
         webView.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);
         setupWebView();
-    }
-
-    // 判断是否为平板设备（最小宽度 >= 600dp）
-    private boolean isTablet() {
-        Configuration config = getResources().getConfiguration();
-        return config.smallestScreenWidthDp >= 600;
     }
 
     private void setupWebView() {
@@ -108,6 +96,28 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, "无法打开文件选择器", Toast.LENGTH_SHORT).show();
                     return false;
                 }
+                return true;
+            }
+            
+            // 去除对话框中的 file:// 网址提示
+            @Override
+            public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
+                // 直接显示消息，不包含 URL
+                new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> result.confirm())
+                    .setCancelable(false)
+                    .show();
+                return true;
+            }
+            
+            @Override
+            public boolean onJsConfirm(WebView view, String url, String message, JsResult result) {
+                new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> result.confirm())
+                    .setNegativeButton(android.R.string.cancel, (dialog, which) -> result.cancel())
+                    .show();
                 return true;
             }
         });
@@ -210,9 +220,7 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                showToast("权限已授予");
-            } else {
-                showToast("权限被拒绝");
+                // 权限已授予，不再弹出“权限被拒绝”提示
             }
         }
     }
