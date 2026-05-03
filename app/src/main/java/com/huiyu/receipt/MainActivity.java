@@ -74,12 +74,12 @@ public class MainActivity extends AppCompatActivity {
         settings.setAllowContentAccess(true);
         settings.setDomStorageEnabled(true);
         
-        // 允许手动缩放，同时启动时自动适应屏幕宽度
+        // 允许用户手动缩放，同时启动时自动适应屏幕宽
         settings.setSupportZoom(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
-        settings.setUseWideViewPort(true);       // 关键：让页面适应屏幕宽，手机自动缩小
-        settings.setLoadWithOverviewMode(true);  // 关键：初始加载时以缩略图显示全页
+        settings.setUseWideViewPort(true);       // 使用宽视口，页面宽度设为 viewport 指定的 794
+        settings.setLoadWithOverviewMode(true);  // 初始加载时缩小到屏幕宽度
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
