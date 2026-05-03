@@ -2,17 +2,15 @@
 <html lang="zh-CN" style="background:#eef2f5;">
 <head>
     <meta charset="UTF-8">
-    <!-- 宽度更新为 831 -->
-    <meta name="viewport" content="width=831, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="viewport" content="width=794, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>慧语电子票据</title>
     <script src="js/html2canvas.min.js"></script>
     <script src="js/jspdf.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
         body { background: #eef2f5; font-family: 'Segoe UI','PingFang SC','微软雅黑',Roboto,sans-serif; margin: 0; padding: 0; overflow-x: auto; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
-        /* 容器宽度调整到 831px (220mm) */
-        #app-wrapper { width: 831px; transform-origin: top center; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
-        .invoice-container, .control-panel, .btn-group { width: 831px; }
+        #app-wrapper { width: 794px; transform-origin: top center; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
+        .invoice-container, .control-panel, .btn-group { width: 794px; }
         .invoice-container { position: relative; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-radius: 20px; padding: 12mm 7px 15mm 7px; margin-bottom: 16px; overflow: visible; user-select: none; -webkit-user-select: none; }
         .normal-content { display: block; }
         .image-mode-container { display: none; background: #e8e8e8; border-radius: 8px; text-align: center; position: relative; overflow: hidden; min-height: 80px; margin: 0 auto; }
@@ -76,6 +74,7 @@
 </head>
 <body>
 <div id="app-wrapper">
+    <!-- 票据容器 -->
     <div class="invoice-container" id="invoiceContainer">
         <div class="normal-content" id="normalContent">
             <img id="brandImage" class="brand-overlay" src="" alt="品牌图" style="display:none;">
@@ -121,6 +120,7 @@
         </div>
     </div>
 
+    <!-- 控制面板 -->
     <div class="control-panel" id="controlPanel">
         <div class="tab-buttons">
             <button class="tab-btn active" data-tab="basic">基本资料</button>
@@ -209,6 +209,7 @@
 </div>
 
 <script>
+    // ===================== 全局引用 =====================
     const brandImage = document.getElementById('brandImage');
     const companyStamp = document.getElementById('companyStamp');
     const normalContent = document.getElementById('normalContent');
@@ -218,11 +219,11 @@
     const appWrapper = document.getElementById('app-wrapper');
     let originalImage = null, rotation = 0;
 
-    // 宽度小于 831px 时自动缩放
+    // ===================== 动态缩放 =====================
     function resizeApp() {
         const w = window.innerWidth;
-        if (w < 831) {
-            const scale = w / 831;
+        if (w < 794) {
+            const scale = w / 794;
             appWrapper.style.transform = `scale(${scale})`;
             appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
         } else {
@@ -234,7 +235,7 @@
     window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
     window.addEventListener('load', () => setTimeout(resizeApp, 30));
 
-    // Android 桥接
+    // ===================== Android 桥接 =====================
     function showToast(msg) {
         if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
             try { AndroidBridge.showToast(msg); } catch(e) {}
@@ -255,7 +256,7 @@
         return false;
     }
 
-    // 业务数据
+    // ===================== 业务数据 =====================
     let items = [], selectedIndex = -1;
     const STORAGE_KEY = 'invoiceData_v2';
     const UNITS = new Set(['个','台','套','根','件','只','条','支','箱','包','瓶','盒','桶','双','对','米','千克','公斤','克','升','毫升','袋','卷','组','部','块','片','张','把','粒','罐','打','份','册','本','辆','架','顶','副','串','捆','扎','排','座','栋','扇','盏','枚','轴','码','英尺','英寸','厘米','毫米','GB','TB']);
@@ -352,7 +353,7 @@
         document.getElementById('amountCN').innerHTML = convertCurrency(sub);
     }
 
-    // 商品操作事件绑定
+    // ===================== 商品操作事件绑定 =====================
     document.getElementById('addItemBtn').onclick = () => {
         let n = document.getElementById('prodName').value.trim(); if (!n) return alert('请输入商品名称');
         items.push({ name: n, unit: document.getElementById('prodUnit').value||'个',
@@ -390,7 +391,7 @@
         document.getElementById(id).addEventListener('input', syncInfo);
     });
 
-    // 图片拖拽与存储
+    // ===================== 图片拖拽与存储 =====================
     function makeDraggable(el) {
         if (!el) return;
         let drag=false, sx, sy, sl, st;
@@ -451,7 +452,7 @@
         }
     }
 
-    // 商标管理函数（修复图标显示）
+    // ===================== 商标管理函数 =====================
     function placeOverlayInContainer(el) {
         if (imageModeContainer.style.display === 'block') {
             if (el.parentNode !== imageModeContainer) {
@@ -465,7 +466,6 @@
             el.style.top = (ch/2 - elW/2) + 'px';
         }
     }
-
     function handleBrandUpload(input) {
         let f = input.files[0];
         if (f && (f.type==='image/png'||f.type==='image/jpeg')) {
@@ -494,7 +494,6 @@
         saveBrand();
         placeOverlayInContainer(brandImage);
     }
-
     function handleStampUpload(input) {
         let f = input.files[0];
         if (f && (f.type==='image/png'||f.type==='image/jpeg')) {
@@ -524,7 +523,7 @@
         placeOverlayInContainer(companyStamp);
     }
 
-    // 背景图旋转，A4 容器方向随旋转自适应
+    // ===================== 背景图旋转，A4 容器方向随旋转自适应 =====================
     function redrawCanvas() {
         if (!originalImage) return;
         const canvas = imageCanvas, ctx = canvas.getContext('2d');
@@ -534,10 +533,9 @@
         const newW = w * cos + h * sin, newH = w * sin + h * cos;
         
         let containerW, containerH;
-        // 宽度更新为 831
-        if (rotation % 180 === 0) { containerW = 831; containerH = 1175; }
-        else { containerW = 1175; containerH = 831; }
-        const maxWidth = window.innerWidth < 831 ? window.innerWidth : 831;
+        if (rotation % 180 === 0) { containerW = 794; containerH = 1123; }
+        else { containerW = 1123; containerH = 794; }
+        const maxWidth = window.innerWidth < 794 ? window.innerWidth : 794;
         const scale = Math.min(maxWidth / containerW, 1);
         containerW *= scale;
         containerH *= scale;
@@ -566,7 +564,6 @@
             }
         });
     }
-
     function handleFullImageUpload(input) {
         const f = input.files[0];
         if (f && f.type.match(/image\/(png|jpeg|webp)/)) {
@@ -609,7 +606,7 @@
         imageCanvas.width = 0; imageCanvas.height = 0;
     };
 
-    // 批量解析
+    // ===================== 批量解析 =====================
     function parseBatch() {
         let lines = document.getElementById('batchRawInput').value.split('\n').filter(l=>l.trim());
         let res = lines.map(line => {
@@ -625,13 +622,12 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // 导出（去除蓝条、水印、文件名）
+    // ===================== 导出（去除蓝条、水印、文件名） =====================
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
         clone.querySelectorAll('.selected-row').forEach(r => r.classList.remove('selected-row'));
-        // 导出宽度同步更新为 831px
-        clone.style.width = '831px';
+        clone.style.width = '794px';
         clone.style.position = 'absolute';
         clone.style.left = '-9999px';
         clone.style.top = '0';
@@ -714,6 +710,7 @@
         finally { btn.disabled = false; btn.innerText = '📄 下载 PDF'; }
     }
 
+    // ===================== 标签切换 =====================
     document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
@@ -721,7 +718,7 @@
         document.getElementById('tab-' + b.dataset.tab).classList.add('active-pane');
     }));
 
-    // 初始化
+    // ===================== 初始化 =====================
     setInvoiceMeta();
     restoreBrand();
     restoreStamp();
