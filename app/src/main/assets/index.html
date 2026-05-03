@@ -26,7 +26,7 @@
         }
         #app-wrapper {
             width: 794px;
-            padding: 10px 0 30px 0;
+            padding: 45px 0 30px 0;   /* 顶部增加12mm(≈45px) */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -187,7 +187,7 @@
         }
         .remark-box strong { flex-shrink: 0; }
         .remark-box span { flex: 1; white-space: normal; word-break: break-word; }
-        .remark-box button { flex-shrink: 0; margin-left: 8px; }
+        .remark-box button { flex-shrink: 0; margin-left: 8px; }  /* 紧贴内容，不移到右侧 */
         .btn-group { display: flex; justify-content: center; gap: 20px; margin: 20px 0 10px; }
         .btn-group button { border: none; color: white; font-size: 18px; font-weight: bold; padding: 14px 32px; border-radius: 56px; cursor: pointer; }
         #saveAsImageBtn { background: #2c7da0; }
@@ -318,7 +318,7 @@
                     <input type="file" id="stampInput" accept="image/*" style="display:none;" onchange="handleStampUpload(this)">
                 </div>
                 <div style="background:#eef7ff; padding:16px 20px; border-radius:20px; border:2px dashed #2c7da0;">
-                    <div style="font-weight:600;">🖼️ 导入背景图（支持旋转，自动缩小适配）</div>
+                    <div style="font-weight:600;">🖼️ 导入背景图（支持旋转，自动填满容器）</div>
                     <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:8px;">
                         <button class="btn-sm" style="background:#2c7da0;" onclick="document.getElementById('fullImageInput').click()">📂 导入图片</button>
                     </div>
@@ -621,15 +621,18 @@
         let rad = rotation * Math.PI / 180;
         let cos = Math.abs(Math.cos(rad)), sin = Math.abs(Math.sin(rad));
         let newW = w*cos + h*sin, newH = w*sin + h*cos;
-        let cw = imageModeContainer.clientWidth - 20;
+        // 画布宽度等于容器宽度，使图片填满
+        let cw = imageModeContainer.clientWidth;
         let ch = (cw / newW) * newH;
-        canvas.width = cw; canvas.height = ch;
+        canvas.width = cw;
+        canvas.height = ch;
         ctx.clearRect(0,0,cw,ch);
         ctx.save();
         ctx.translate(cw/2, ch/2);
         ctx.rotate(rad);
         ctx.drawImage(originalImage, -w/2, -h/2, w, h);
         ctx.restore();
+        // 品牌图和公章始终居中于容器
         [brandImage, companyStamp].forEach(el => {
             if (el.style.display !== 'none' && el.parentNode === imageModeContainer) {
                 let elW = parseFloat(el.style.width) || 120;
@@ -649,6 +652,7 @@
                     normalContent.style.display = 'none';
                     imageModeContainer.style.display = 'block';
                     controlBar.style.display = 'flex';
+                    // 将品牌图和公章移入背景图容器，并确保它们在最上层
                     [brandImage, companyStamp].forEach(el => {
                         if (el.style.display !== 'none') {
                             imageModeContainer.appendChild(el);
@@ -696,6 +700,8 @@
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
+        // 移除选中的蓝条
+        clone.querySelectorAll('.selected-row').forEach(r => r.classList.remove('selected-row'));
         clone.style.width = '794px';
         clone.style.position = 'absolute';
         clone.style.left = '-9999px';
