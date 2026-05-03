@@ -9,7 +9,7 @@
     <style>
         * { box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
         body { background: #eef2f5; font-family: 'Segoe UI','PingFang SC','微软雅黑',Roboto,sans-serif; margin: 0; padding: 0; overflow-x: auto; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
-        #app-wrapper { width: 794px; transform-origin: top center; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
+        #app-wrapper { width: 794px; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
         .invoice-container, .control-panel, .btn-group { width: 794px; }
         .invoice-container { position: relative; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-radius: 20px; padding: 12mm 7px 15mm 7px; margin-bottom: 16px; overflow: visible; user-select: none; -webkit-user-select: none; }
         .normal-content { display: block; }
@@ -213,24 +213,9 @@
     const imageModeContainer = document.getElementById('imageModeContainer');
     const imageCanvas = document.getElementById('imageCanvas');
     const controlBar = document.getElementById('imageControlBarExternal');
-    const appWrapper = document.getElementById('app-wrapper');
     let originalImage = null, rotation = 0;
 
-    // 强制缩放：仅当屏幕宽度小于 794px 时缩放至全屏，否则保持原样（平板/电脑794px居中）
-    function resizeApp() {
-        const w = window.innerWidth;
-        if (w < 794) {
-            const scale = w / 794;
-            appWrapper.style.transform = `scale(${scale})`;
-            appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
-        } else {
-            appWrapper.style.transform = 'none';
-            appWrapper.style.marginBottom = '0';
-        }
-    }
-    window.addEventListener('resize', resizeApp);
-    window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
-    window.addEventListener('load', () => { setTimeout(resizeApp, 30); if (companyStamp.style.display !== 'none' && companyStamp.src) positionStampAtInvoiceNo(); });
+    // 无 JS 缩放，由 WebView 的 setUseWideViewPort(true) 统一处理
 
     function showToast(msg) {
         if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
@@ -435,7 +420,6 @@
             localStorage.setItem('stampW', document.getElementById('stampWidth').value);
         }
     }
-    // 公司章定位到单据编号正中间
     function positionStampAtInvoiceNo() {
         const invoiceNoEl = document.getElementById('invoiceNo');
         if (!invoiceNoEl || !companyStamp) return;
@@ -535,7 +519,6 @@
         placeOverlayInContainer(companyStamp);
     }
 
-    // 背景图旋转，A4 容器方向随旋转自适应
     function redrawCanvas() {
         if (!originalImage) return;
         const canvas = imageCanvas, ctx = canvas.getContext('2d');
@@ -628,7 +611,6 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // 导出（去除蓝条、水印、文件名）
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
@@ -731,7 +713,6 @@
         items = [{ name: '示例商品', unit: '个', qty: 1, price: 10.00, remark: '类型A' }];
         selectedIndex = 0; renderTable();
     } else renderTable();
-    resizeApp();
     if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
         try { AndroidBridge.requestStoragePermission(); } catch(e) {}
     }
