@@ -3,7 +3,6 @@ package com.huiyu.receipt;
 import android.Manifest;
 import android.content.ContentValues;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -51,8 +50,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // 强制竖屏
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        // 不强制竖屏，允许自由旋转
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
@@ -66,7 +64,6 @@ public class MainActivity extends AppCompatActivity {
         
         webView = new WebView(this);
         webView.setBackgroundColor(Color.parseColor("#eef2f5"));
-        // 核心修复：让滚动条浮在内容上方，不占用布局宽度
         webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
         setContentView(webView);
         setupWebView();
