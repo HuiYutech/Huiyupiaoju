@@ -216,7 +216,7 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
-    // 智能缩放：宽度小于794时缩小填满，否则保持原样（不放大），完美竖屏显示
+    // 智能缩放：宽度小于794时缩小填满，否则保持原样（不放大）
     function resizeApp() {
         const w = window.innerWidth;
         const scale = Math.min(1, w / 794);
@@ -381,7 +381,7 @@
         document.getElementById(id).addEventListener('input', syncInfo);
     });
 
-    // 图片拖拽与存储
+    // 图片拖拽
     function makeDraggable(el) {
         if (!el) return;
         let drag=false, sx, sy, sl, st;
@@ -593,7 +593,7 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // 水印正常大小：画布600x600，字体28px
+    // 水印：600x600画布，28px字体，清晰
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
