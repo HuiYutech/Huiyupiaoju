@@ -325,7 +325,7 @@
 </div>
 
 <script>
-    // ===================== 元素引用 =====================
+    // 元素引用
     const appWrapper = document.getElementById('app-wrapper');
     const brandImage = document.getElementById('brandImage');
     const companyStamp = document.getElementById('companyStamp');
@@ -335,11 +335,10 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
-    // ===================== 视觉缩放 =====================
+    // ===================== 统一缩放：手机缩小，平板/电脑不放大 =====================
     function resizeApp() {
         const w = window.innerWidth;
-        const base = 794;
-        const scale = w / base;
+        const scale = Math.min(1, w / 794);   // 最大不超过1，即不放大
         appWrapper.style.transform = `scale(${scale})`;
         appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
     }
