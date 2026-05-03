@@ -74,12 +74,12 @@ public class MainActivity extends AppCompatActivity {
         settings.setAllowContentAccess(true);
         settings.setDomStorageEnabled(true);
         
-        // 允许手动缩放，同时自动适配
-        settings.setSupportZoom(true);
+        // 关键：严格原始渲染，不启用自动缩放或宽视口
+        settings.setUseWideViewPort(false);
+        settings.setLoadWithOverviewMode(false);
+        settings.setSupportZoom(true);               // 用户可手动缩放
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
-        settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(true);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
