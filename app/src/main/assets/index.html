@@ -8,12 +8,17 @@
     <script src="js/jspdf.umd.min.js"></script>
     <style>
         :root {
-            --app-width: 794px;
-            --padding-h: 7px;  /* 2mm 左右间距 */
+            --app-width: 794px;      /* 210mm */
+            --bg-color: #eef2f5;
         }
-        * { box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+        * {
+            box-sizing: border-box;
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+        }
         body {
-            background: #eef2f5;
+            background: var(--bg-color);
             font-family: 'Segoe UI', 'PingFang SC', '微软雅黑', Roboto, sans-serif;
             margin: 0;
             padding: 0;
@@ -23,6 +28,7 @@
             align-items: flex-start;
             min-height: 100vh;
         }
+        /* 仅缩放功能区，背景不变 */
         #app-wrapper {
             width: var(--app-width);
             transform-origin: top center;
@@ -32,14 +38,17 @@
             align-items: center;
             margin: 0 auto;
         }
-        /* 功能区容器强制宽度 */
-        .invoice-container, .control-panel, .btn-group { width: var(--app-width); }
+        .invoice-container,
+        .control-panel,
+        .btn-group {
+            width: var(--app-width);
+        }
         .invoice-container {
             position: relative;
             background: white;
             box-shadow: 0 8px 24px rgba(0,0,0,0.08);
             border-radius: 20px;
-            padding: 12mm var(--padding-h) 15mm var(--padding-h);
+            padding: 12mm 7px 15mm 7px;
             margin-bottom: 16px;
             overflow: visible;
             user-select: none;
@@ -47,48 +56,102 @@
         }
         .normal-content { display: block; }
         .image-mode-container {
-            display: none; background: #e8e8e8; border-radius: 8px; text-align: center;
-            position: relative; overflow: hidden; min-height: 80px;
+            display: none;
+            background: #e8e8e8;
+            border-radius: 8px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            min-height: 80px;
         }
-        .image-mode-container canvas { display: block; margin: 0 auto; max-width: 100%; height: auto; background: #fff; }
-        .image-mode-container .brand-overlay, .image-mode-container .company-stamp {
-            position: absolute; z-index: 30; cursor: grab; user-select: none;
-            -webkit-user-select: none; touch-action: none; display: inline-block;
+        .image-mode-container canvas {
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            height: auto;
+            background: #fff;
+        }
+        .image-mode-container .brand-overlay,
+        .image-mode-container .company-stamp {
+            position: absolute;
+            z-index: 30;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            display: inline-block;
         }
         .image-control-bar-external {
-            margin-top: 10px; display: flex; justify-content: center; gap: 8px;
-            background: rgba(0,0,0,0.65); padding: 6px 12px; border-radius: 40px; flex-wrap: wrap;
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            background: rgba(0,0,0,0.65);
+            padding: 6px 12px;
+            border-radius: 40px;
+            flex-wrap: wrap;
         }
         .image-control-bar-external button {
-            background: white; border: none; padding: 5px 12px; border-radius: 32px;
-            font-size: 13px; font-weight: bold; cursor: pointer; touch-action: manipulation;
+            background: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 32px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
         }
         .watermark-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 10000; background-repeat: repeat;
-            background-size: 220px 220px; opacity: 0.25;
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10000;
+            background-repeat: repeat;
+            background-size: 220px 220px;
+            opacity: 0.25;
         }
-        .brand-overlay, .company-stamp { position: absolute; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
+        .brand-overlay, .company-stamp {
+            position: absolute;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
         .brand-overlay { z-index: 20; border-radius: 6px; opacity: 0.9; }
         .company-stamp { z-index: 9999; opacity: 0.85; display: none; }
         .brand-overlay.dragging, .company-stamp.dragging { cursor: grabbing; opacity: 0.7; }
         .control-panel {
-            background: white; border-radius: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-            margin-bottom: 12px; border: 1px solid #e2edf2; overflow: hidden;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+            margin-bottom: 12px;
+            border: 1px solid #e2edf2;
+            overflow: hidden;
         }
         .tab-buttons {
-            display: flex; background: #eef2f5; border-bottom: 1px solid #e2edf2; overflow-x: auto;
+            display: flex;
+            background: var(--bg-color);   /* 与背景同色 */
+            border-bottom: 1px solid #e2edf2;
+            overflow-x: auto;
         }
         .tab-btn {
-            flex: 1; padding: 12px 8px; background: transparent; border: none;
-            font-size: 14px; font-weight: 600; color: #4a627a; cursor: pointer;
-            border-bottom: 3px solid transparent; white-space: nowrap;
+            flex: 1;
+            padding: 12px 8px;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: #4a627a;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
         }
         .tab-btn.active { color: #2c7da0; border-bottom-color: #2c7da0; background: white; }
         .tab-pane { display: none; padding: 24px; }
         .tab-pane.active-pane { display: block; }
-        .info-edit-panel { display: flex; flex-wrap: wrap; gap: 16px 20px; }
-        .info-field { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 6px; }
+        /* 基本资料强制一行显示 */
+        .info-edit-panel { display: flex; flex-wrap: nowrap; gap: 14px; }
+        .info-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
         .info-field label { font-size: 14px; font-weight: 600; color: #4a627a; }
         .info-field input { padding: 10px 14px; border-radius: 12px; border: 1px solid #cddfe7; font-size: 14px; width: 100%; }
         .add-goods-form { background: #fefcf5; border-radius: 20px; padding: 20px; border: 1px solid #e9e5d5; }
@@ -111,11 +174,11 @@
         .clickable-seq { cursor: pointer; background: #f0f7ff; font-weight: 600; display: block; }
         .total-row { margin-top: 16px; background: #f8f9fc; padding: 10px 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
         .remark-box { background: #f8f9fc; padding: 8px 15px; border-radius: 12px; margin: 14px 0; display: flex; align-items: center; gap: 8px; }
+        /* 底部按钮组（仅保留两个按钮，打印已移除） */
         .btn-group { display: flex; justify-content: center; gap: 20px; margin: 20px 0 10px; }
         .btn-group button { border: none; color: white; font-size: 18px; font-weight: bold; padding: 14px 32px; border-radius: 56px; cursor: pointer; }
         #saveAsImageBtn { background: #2c7da0; }
         #downloadPdfBtn { background: #d9534f; }
-        #printBtn { background: #5f6c7a; }
         .toast-msg {
             position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.8); color: #fff; padding: 10px 22px;
@@ -123,28 +186,32 @@
             pointer-events: none;
         }
         .toast-msg.show { opacity: 1; }
-        @media print { body { background: white; } .btn-group, .control-panel { display: none; } }
+        @media print {
+            body { background: white; }
+            .btn-group, .control-panel { display: none; }
+        }
     </style>
 </head>
 <body>
 <div id="app-wrapper">
+    <!-- 票据容器 -->
     <div class="invoice-container" id="invoiceContainer">
         <div class="normal-content" id="normalContent">
             <img id="brandImage" class="brand-overlay" src="" alt="品牌图" style="display:none;">
             <img id="companyStamp" class="company-stamp" src="" alt="公司章" style="display:none;">
 
             <div class="header-info" style="text-align:center; margin-bottom:12px;">
-                <div class="company-title" style="font-size:24px; font-weight:800; color:#0b3b4f;">XXX科技有限公司销售单</div>
-                <div class="sub-title" style="font-size:13px; color:#2c3e50;">联系电话：000-000000 &nbsp;|&nbsp; 联系人：某某某</div>
+                <div class="company-title" style="font-size:24px; font-weight:800; color:#0b3b4f;">三亚慧语科技有限公司销售单</div>
+                <div class="sub-title" style="font-size:13px; color:#2c3e50;">联系电话：15308921100 &nbsp;|&nbsp; 联系人：林道雄</div>
             </div>
             <div style="border-bottom:2px solid #1a4d6b; margin-bottom:12px;"></div>
             <div class="meta-row" style="display:flex; justify-content:space-between; background:#f4f7fa; padding:8px 15px; border-radius:12px; margin:12px 0; border:1px solid #bac8d3;">
-                <div><strong>收货单位：</strong><span id="customerNameDisplay">XXX单位</span></div>
+                <div><strong>收货单位：</strong><span id="customerNameDisplay">鸿港批发市场林总</span></div>
                 <div><strong>开单日期：</strong><span id="headerInvoiceDate"></span></div>
             </div>
             <div class="table-wrapper">
                 <table class="sales-table" id="salesTable">
-                    <thead><tr><th style="width:45px">序号</th><th>名称</th><th style="width:60px">单位</th><th style="width:70px">数量</th><th style="width:100px">单价(元)</th><th style="width:90px">金额(元)</th><th>备注</th></tr></thead>
+                    <thead><tr><th style="width:45px">序号</th><th>名称</th><th style="width:60px">单位</th><th style="width:70px">数量</th><th style="width:100px">单价(元)</th><th style="width:90px">金额(元)</th><th>备注/类别</th></tr></thead>
                     <tbody id="tableBody"></tbody>
                 </table>
             </div>
@@ -153,13 +220,14 @@
                 <span style="font-size:20px; color:#c0392b;">￥ <span id="amountTotal">0.00</span></span>
             </div>
             <div class="remark-box" id="remarkBox">
-                <strong>备注：</strong> <span id="remarkText">祝你生活愉快</span>
+                <strong>备 注：</strong>
+                <span id="remarkText">本次监控布线、设备调试、硬件配套施工已全部完工交付，线路布局规整，设备运行调试正常。感谢您的理解与配合，本店长期专注弱电安防、电脑配套相关服务，坚守品质、诚信经营。后续设备维护、故障排查、升级改造均可随时沟通，竭诚为您长久服务。</span>
                 <button id="editRemarkBtn" style="margin-left:auto; background:transparent; border:1px solid #e2b87a; color:#b45f1b; border-radius:40px; padding:3px 10px; cursor:pointer;">✎ 编辑</button>
             </div>
             <div style="display:flex; justify-content:space-between; margin-top:24px; border-top:2px solid #3c5a6f; padding-top:16px;">
-                <span id="signerName">制单人：某某某</span>
-                <span style="font-size:12px; text-align:center; color:#4a5568;">本销售单盖章有效</span>
-                <span><strong>单据编号：</strong><span id="invoiceNo"></span></span>
+                <span id="signerName">制单人：林道雄</span>
+                <span style="font-size:12px; text-align:center; color:#4a5568;">本销售单盖章有效 | 电子单据与纸质同等效力</span>
+                <span><strong>单据编号：</strong><span id="invoiceNo">XS-20260507</span></span>
             </div>
         </div>
 
@@ -173,6 +241,7 @@
         </div>
     </div>
 
+    <!-- 控制面板 -->
     <div class="control-panel" id="controlPanel">
         <div class="tab-buttons">
             <button class="tab-btn active" data-tab="basic">基本资料</button>
@@ -182,132 +251,113 @@
         </div>
         <div class="tab-pane active-pane" id="tab-basic">
             <div class="info-edit-panel">
-                <div class="info-field"><label>🏢 公司名称</label><input id="editCompany" value="XXX科技有限公司销售单"></div>
-                <div class="info-field"><label>📞 联系电话</label><input id="editPhone" value="000-000000"></div>
-                <div class="info-field"><label>👤 联系人</label><input id="editContact" value="某某某"></div>
-                <div class="info-field"><label>✍️ 制单人</label><input id="editSigner" value="某某某"></div>
-                <div class="info-field"><label>🏪 收货单位</label><input id="editCustomer" value="XXX单位"></div>
+                <div class="info-field"><label>🏢 公司名称</label><input id="editCompany" value="三亚慧语科技有限公司"></div>
+                <div class="info-field"><label>📞 联系电话</label><input id="editPhone" value="15308921100"></div>
+                <div class="info-field"><label>👤 联系人</label><input id="editContact" value="林道雄"></div>
+                <div class="info-field"><label>✍️ 制单人</label><input id="editSigner" value="林道雄"></div>
+                <div class="info-field"><label>🏪 收货单位</label><input id="editCustomer" value="鸿港批发市场林总"></div>
             </div>
         </div>
         <div class="tab-pane" id="tab-edit">
             <div class="add-goods-form">
                 <div class="form-row">
-                    <div class="form-field"><label>商品名称</label><input id="prodName" placeholder="商品名称"></div>
+                    <div class="form-field"><label>商品名称</label><input id="prodName" placeholder="请输入商品名称"></div>
                     <div class="form-field"><label>单位</label><input id="prodUnit" value="个"></div>
-                    <div class="form-field"><label>数量</label><input type="number" id="prodQty" value="1" step="any"></div>
-                    <div class="form-field"><label>单价</label><input type="number" id="prodPrice" value="0.00" step="0.01"></div>
+                    <div class="form-field"><label>数量</label><input type="number" id="prodQty" value="1" step="any" min="0.01"></div>
+                    <div class="form-field"><label>单价(元)</label><input type="number" id="prodPrice" value="0.00" step="0.01" min="0"></div>
                 </div>
                 <div class="form-row" style="margin-top:8px;">
-                    <div class="form-field"><label>备注</label><input id="prodRemark"></div>
-                    <div class="form-field" style="flex:0 0 auto;"><button id="addItemBtn" class="add-btn">➕ 添加</button></div>
+                    <div class="form-field"><label>备注</label><input id="prodRemark" placeholder="可选"></div>
+                    <div class="form-field" style="flex:0 0 auto;"><button id="addItemBtn" class="add-btn">➕ 添加商品</button></div>
                 </div>
             </div>
             <div class="action-buttons">
-                <div class="btn-group-row"><div class="btn-group-title">编辑</div><button id="loadEditBtn" class="action-icon-btn">加载选中</button><button id="saveEditBtn" class="btn-sm">保存</button></div>
-                <div class="btn-group-row"><div class="btn-group-title">顺序</div><button id="moveUpBtn" class="action-icon-btn">↑ 上移</button><button id="moveDownBtn" class="action-icon-btn">↓ 下移</button></div>
-                <div class="btn-group-row"><div class="btn-group-title">删除</div><button id="deleteSelectedBtn" class="action-icon-btn danger">删除</button><button id="clearAllBtn" class="btn-sm btn-sm-danger">清空</button></div>
+                <div class="btn-group-row"><div class="btn-group-title">✏️ 编辑当前选中商品</div><button id="loadEditBtn" class="action-icon-btn">📋 加载选中</button><button id="saveEditBtn" class="btn-sm">💾 保存修改</button></div>
+                <div class="btn-group-row"><div class="btn-group-title">🔁 调整顺序</div><button id="moveUpBtn" class="action-icon-btn">↑ 上移</button><button id="moveDownBtn" class="action-icon-btn">↓ 下移</button></div>
+                <div class="btn-group-row"><div class="btn-group-title">🗑️ 删除操作</div><button id="deleteSelectedBtn" class="action-icon-btn danger">删除选中</button><button id="clearAllBtn" class="btn-sm btn-sm-danger">清空全部</button></div>
             </div>
         </div>
         <div class="tab-pane" id="tab-image">
-            <div style="margin-bottom:16px;">📎 手指拖拽移动图片，位置自动保存</div>
+            <div style="margin-bottom:16px; font-weight:500;">📎 手指拖拽可移动图片，位置自动保存</div>
             <div style="display:flex; flex-direction:column; gap:20px;">
-                <div style="background:#f9fafb; padding:16px; border-radius:20px;">
-                    <div style="font-weight:600;">🏢 品牌图</div>
-                    <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px;">
+                <div style="background:#f9fafb; padding:16px 20px; border-radius:20px; border:1px solid #e2edf2;">
+                    <div style="font-weight:600; margin-bottom:8px;">🏢 品牌图</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
                         <button id="uploadBrandBtn" class="btn-sm" style="background:#5f6c7a;">上传</button>
                         <button id="removeBrandBtn" class="btn-sm" style="background:#bc6c25;">移除</button>
-                        <span>宽:</span><input type="number" id="brandWidth" value="120" style="width:70px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span>宽(px):</span>
+                            <input type="number" id="brandWidth" value="120" step="10" min="30" max="400" style="width:70px; padding:4px; border-radius:20px; border:1px solid #cddfe7;">
+                        </div>
                         <button id="applyBrandSize" class="action-icon-btn">应用</button>
                     </div>
                     <input type="file" id="brandInput" accept="image/*" style="display:none;">
                 </div>
-                <div style="background:#f9fafb; padding:16px; border-radius:20px;">
-                    <div style="font-weight:600;">🖼️ 公司章</div>
-                    <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px;">
+                <div style="background:#f9fafb; padding:16px 20px; border-radius:20px; border:1px solid #e2edf2;">
+                    <div style="font-weight:600; margin-bottom:8px;">🖼️ 公司章</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
                         <button id="uploadStampBtn" class="btn-sm" style="background:#5f6c7a;">上传</button>
                         <button id="removeStampBtn" class="btn-sm" style="background:#bc6c25;">移除</button>
-                        <span>宽:</span><input type="number" id="stampWidth" value="150" style="width:70px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span>宽(px):</span>
+                            <input type="number" id="stampWidth" value="150" step="10" min="50" max="500" style="width:70px; padding:4px; border-radius:20px; border:1px solid #cddfe7;">
+                        </div>
                         <button id="applyStampSize" class="action-icon-btn">应用</button>
                     </div>
                     <input type="file" id="stampInput" accept="image/*" style="display:none;">
                 </div>
-                <div style="background:#eef7ff; padding:16px; border-radius:20px; border:2px dashed #2c7da0;">
-                    <div style="font-weight:600;">🖼️ 导入背景图</div>
-                    <div style="margin-top:8px;"><button id="importFullImageBtn" class="btn-sm" style="background:#2c7da0;">📂 导入</button></div>
+                <div style="background:#eef7ff; padding:16px 20px; border-radius:20px; border:2px dashed #2c7da0;">
+                    <div style="font-weight:600;">🖼️ 导入背景图（自动适应宽度，可旋转）</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:8px;">
+                        <button id="importFullImageBtn" class="btn-sm" style="background:#2c7da0;">📂 导入图片</button>
+                        <span style="font-size:12px; color:#666;">旋转后品牌图/公司章自动居中</span>
+                    </div>
                     <input type="file" id="fullImageInput" accept="image/*" style="display:none;">
                 </div>
             </div>
+            <div style="margin-top:12px; font-size:11px; color:#888;">💡 点击移除会清除缓存。</div>
         </div>
         <div class="tab-pane" id="tab-batch">
-            <div style="background:#f9fafb; padding:20px; border-radius:20px;">
-                <div style="font-weight:700; margin-bottom:12px;">🧠 批量解析</div>
-                <textarea id="batchRawInput" rows="5" style="width:100%; border-radius:16px; padding:14px; font-family:monospace;"></textarea>
-                <div id="parsePreview" style="margin-top:12px; max-height:150px; overflow-y:auto;"></div>
-                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;">
-                    <button id="parseBtn" style="background:transparent; border:1px solid #2c7da0; color:#2c7da0; padding:6px 16px; border-radius:32px;">解析</button>
-                    <button id="confirmAddBatchBtn" class="btn-sm">确认添加</button>
+            <div style="background:#f9fafb; border-radius:20px; padding:20px; border:1px solid #e2edf2;">
+                <div style="font-weight:700; font-size:16px; color:#1e4663; margin-bottom:16px;">🧠 精准批量解析 (自动识别数量/单位/单价/总价)</div>
+                <textarea id="batchRawInput" rows="5" style="width:100%; border-radius:16px; border:1px solid #cbd5e1; padding:14px; font-family:monospace; font-size:14px; min-height:120px;" placeholder="支持格式示例：&#10;智能平板 3 台 2499&#10;网线 5根 2.8&#10;鼠标 10 25&#10;键盘 2个 160&#10;工费 600"></textarea>
+                <div id="parsePreview" style="margin-top:16px; max-height:200px; overflow-y:auto; background:white; border-radius:16px; padding:12px; border:1px solid #e2e8f0;"></div>
+                <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:16px;">
+                    <button id="parseBtn" style="background:transparent; border:1px solid #2c7da0; color:#2c7da0; padding:6px 16px; border-radius:32px; font-weight:bold; cursor:pointer;">🔍 智能解析预览</button>
+                    <button id="confirmAddBatchBtn" class="btn-sm">✓ 确认添加全部</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 底部按钮组（打印已移除） -->
     <div class="btn-group">
-        <button id="saveAsImageBtn">📷 保存图片</button>
+        <button id="saveAsImageBtn">📷 保存为图片</button>
         <button id="downloadPdfBtn">📄 下载 PDF</button>
-        <button id="printBtn">🖨️ 打印</button>
     </div>
 </div>
 
 <script>
-    // ===================== 缩放：仅针对功能区，背景不缩放 =====================
-    const APP_WIDTH = 794;
+    // ===================== 获取 DOM 元素 =====================
     const appWrapper = document.getElementById('app-wrapper');
-    function resizeApp() {
-        const w = window.innerWidth;
-        if (w < APP_WIDTH) {
-            const scale = w / APP_WIDTH;
-            // 计算居中偏移量，避免靠左
-            const leftOffset = (w - APP_WIDTH * scale) / 2;
-            appWrapper.style.transform = `scale(${scale})`;
-            appWrapper.style.marginLeft = `${leftOffset}px`;
-            appWrapper.style.marginRight = '0';
-            appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
-        } else {
-            appWrapper.style.transform = 'none';
-            appWrapper.style.margin = '0 auto';
-            appWrapper.style.marginBottom = '0';
-        }
-    }
-    window.addEventListener('resize', resizeApp);
-    window.addEventListener('orientationchange', () => setTimeout(resizeApp, 20));
-    window.addEventListener('load', () => setTimeout(resizeApp, 10));
-
-    // ===================== 全部 DOM 引用（确保商标按钮可响应） =====================
+    const normalContent = document.getElementById('normalContent');
     const brandImage = document.getElementById('brandImage');
     const companyStamp = document.getElementById('companyStamp');
-    const normalContent = document.getElementById('normalContent');
     const imageModeContainer = document.getElementById('imageModeContainer');
     const imageCanvas = document.getElementById('imageCanvas');
     const controlBar = document.getElementById('imageControlBarExternal');
-
-    // 表格相关
     const tableBody = document.getElementById('tableBody');
     const amountCN = document.getElementById('amountCN');
     const amountTotal = document.getElementById('amountTotal');
-    const invoiceNo = document.getElementById('invoiceNo');
     const headerInvoiceDate = document.getElementById('headerInvoiceDate');
     const customerNameDisplay = document.getElementById('customerNameDisplay');
     const signerName = document.getElementById('signerName');
     const remarkText = document.getElementById('remarkText');
-
-    // 基本资料
     const editCompany = document.getElementById('editCompany');
     const editPhone = document.getElementById('editPhone');
     const editContact = document.getElementById('editContact');
     const editSigner = document.getElementById('editSigner');
     const editCustomer = document.getElementById('editCustomer');
-
-    // 添加/编辑商品
     const prodName = document.getElementById('prodName');
     const prodUnit = document.getElementById('prodUnit');
     const prodQty = document.getElementById('prodQty');
@@ -321,32 +371,27 @@
     const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
     const clearAllBtn = document.getElementById('clearAllBtn');
     const editRemarkBtn = document.getElementById('editRemarkBtn');
-
-    // 商标管理
-    const uploadBrandBtn = document.getElementById('uploadBrandBtn');
-    const removeBrandBtn = document.getElementById('removeBrandBtn');
-    const brandWidth = document.getElementById('brandWidth');
-    const applyBrandSize = document.getElementById('applyBrandSize');
-    const brandInput = document.getElementById('brandInput');
-    const uploadStampBtn = document.getElementById('uploadStampBtn');
-    const removeStampBtn = document.getElementById('removeStampBtn');
-    const stampWidth = document.getElementById('stampWidth');
-    const applyStampSize = document.getElementById('applyStampSize');
-    const stampInput = document.getElementById('stampInput');
-    const importFullImageBtn = document.getElementById('importFullImageBtn');
-    const fullImageInput = document.getElementById('fullImageInput');
-    const closeImageModeBtn = document.getElementById('closeImageModeBtn');
-
-    // 批量解析
-    const batchRawInput = document.getElementById('batchRawInput');
-    const parsePreview = document.getElementById('parsePreview');
-    const parseBtn = document.getElementById('parseBtn');
-    const confirmAddBatchBtn = document.getElementById('confirmAddBatchBtn');
-
-    // 底部按钮
     const saveAsImageBtn = document.getElementById('saveAsImageBtn');
     const downloadPdfBtn = document.getElementById('downloadPdfBtn');
-    const printBtn = document.getElementById('printBtn');
+
+    // ===================== 动态缩放（仅缩放功能区，铺满且水平居中） =====================
+    const APP_WIDTH = 794;
+    function resizeApp() {
+        const w = window.innerWidth;
+        if (w < APP_WIDTH) {
+            const scale = w / APP_WIDTH;
+            appWrapper.style.transform = `scale(${scale})`;
+            appWrapper.style.margin = '0 auto';   // 保持居中
+            appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
+        } else {
+            appWrapper.style.transform = 'none';
+            appWrapper.style.margin = '0 auto';
+            appWrapper.style.marginBottom = '0';
+        }
+    }
+    window.addEventListener('resize', resizeApp);
+    window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
+    window.addEventListener('load', () => setTimeout(resizeApp, 20));
 
     // ===================== Android 桥接 =====================
     const isAndroid = typeof AndroidBridge !== 'undefined' && AndroidBridge !== null;
@@ -365,15 +410,12 @@
         if (isAndroid) { try { AndroidBridge.saveFile(b64, name, mime); return true; } catch(e) {} }
         return false;
     }
-    function requestStorage() {
-        if (isAndroid) { try { AndroidBridge.requestStoragePermission(); } catch(e) {} }
-    }
-    window.addEventListener('load', () => { setTimeout(requestStorage, 200); });
 
-    // ===================== 数据逻辑 =====================
+    // ===================== 业务数据 =====================
     let items = [], selectedIndex = -1;
-    const STORAGE_KEY = 'invoice_data_v2';
+    const STORAGE_KEY = 'invoiceData_v2';
     const UNITS = new Set(['个','台','套','根','件','只','条','支','箱','包','瓶','盒','桶','双','对','米','千克','公斤','克','升','毫升','袋','卷','组','部','块','片','张','把','粒','罐','打','份','册','本','辆','架','顶','副','串','捆','扎','排','座','栋','扇','盏','枚']);
+
     function saveData() {
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify({
             items, selectedIndex,
@@ -387,9 +429,9 @@
         try {
             let d = JSON.parse(raw);
             items = d.items || []; selectedIndex = d.selectedIndex ?? -1;
-            editCompany.value = d.company || ''; editPhone.value = d.phone || '';
-            editContact.value = d.contact || ''; editSigner.value = d.signer || '';
-            editCustomer.value = d.customer || ''; remarkText.innerText = d.remark || '';
+            editCompany.value = d.company || '三亚慧语科技有限公司'; editPhone.value = d.phone || '15308921100';
+            editContact.value = d.contact || '林道雄'; editSigner.value = d.signer || '林道雄';
+            editCustomer.value = d.customer || '鸿港批发市场林总'; remarkText.innerText = d.remark || '本次监控布线……';
             syncInfo(); renderTable(); return true;
         } catch(e) { return false; }
     }
@@ -400,11 +442,11 @@
         customerNameDisplay.innerText = editCustomer.value || '';
         saveData();
     }
-    function setMeta() {
+    function setInvoiceMeta() {
         let d = new Date();
         let y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
         headerInvoiceDate.innerText = `${y}-${m}-${day} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-        invoiceNo.innerText = `XS-${y}${m}${day}-${Math.floor(Math.random()*1000)}`;
+        // 单据编号保留原有格式
     }
     function convertCurrency(money) {
         if (isNaN(money)) return '零元整';
@@ -449,7 +491,7 @@
         amountCN.innerHTML = convertCurrency(sub);
     }
 
-    // ===================== 图片拖拽与缓存 =====================
+    // ===================== 图片拖拽与存储 =====================
     function makeDraggable(el) {
         if (!el) return;
         let drag = false, sx, sy, sl, st;
@@ -478,7 +520,7 @@
         if (brandImage.src && brandImage.style.display !== 'none') {
             localStorage.setItem('brandImg', brandImage.src);
             localStorage.setItem('brandPos', JSON.stringify({l: brandImage.style.left, t: brandImage.style.top}));
-            localStorage.setItem('brandW', brandWidth.value);
+            localStorage.setItem('brandW', document.getElementById('brandWidth').value);
         }
     }
     function restoreBrand() {
@@ -487,8 +529,8 @@
             brandImage.src = src; brandImage.style.display = 'inline-block';
             let pos = JSON.parse(localStorage.getItem('brandPos') || '{}');
             brandImage.style.left = pos.l || '20px'; brandImage.style.top = pos.t || '0px';
-            brandWidth.value = localStorage.getItem('brandW') || '120';
-            brandImage.style.width = brandWidth.value + 'px';
+            document.getElementById('brandWidth').value = localStorage.getItem('brandW') || '120';
+            brandImage.style.width = document.getElementById('brandWidth').value + 'px';
             makeDraggable(brandImage);
         }
     }
@@ -496,7 +538,7 @@
         if (companyStamp.src && companyStamp.style.display !== 'none') {
             localStorage.setItem('stampImg', companyStamp.src);
             localStorage.setItem('stampPos', JSON.stringify({l: companyStamp.style.left, t: companyStamp.style.top}));
-            localStorage.setItem('stampW', stampWidth.value);
+            localStorage.setItem('stampW', document.getElementById('stampWidth').value);
         }
     }
     function restoreStamp() {
@@ -505,109 +547,108 @@
             companyStamp.src = src; companyStamp.style.display = 'inline-block';
             let pos = JSON.parse(localStorage.getItem('stampPos') || '{}');
             companyStamp.style.left = pos.l || '150px'; companyStamp.style.top = pos.t || '80px';
-            stampWidth.value = localStorage.getItem('stampW') || '150';
-            companyStamp.style.width = stampWidth.value + 'px';
+            document.getElementById('stampWidth').value = localStorage.getItem('stampW') || '150';
+            companyStamp.style.width = document.getElementById('stampWidth').value + 'px';
             makeDraggable(companyStamp);
         }
     }
 
-    // ===================== 商标管理初始化（关键修复） =====================
+    // ===================== 商标管理初始化（关键修复：重新获取元素并绑定） =====================
     function initImageControls() {
-        // 确保 DOM 已存在后绑定事件
-        function bindUpload(btn, input, callback) {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                // 直接调用 click() 打开文件选择器
-                input.click();
-            });
-            input.addEventListener('change', function(e) {
-                callback(e.target.files[0]);
-                input.value = ''; // 清空，以便重复选择同一文件
-            });
-        }
+        // 重新获取元素，防止被覆盖
+        const uploadBrand = document.getElementById('uploadBrandBtn');
+        const removeBrand = document.getElementById('removeBrandBtn');
+        const brandW = document.getElementById('brandWidth');
+        const applyBrand = document.getElementById('applyBrandSize');
+        const brandFile = document.getElementById('brandInput');
 
-        // 品牌图
-        bindUpload(uploadBrandBtn, brandInput, (file) => {
-            if (!file) return;
-            if (file.type !== 'image/png' && file.type !== 'image/jpeg') {
-                alert('仅支持 PNG/JPG'); return;
-            }
-            let reader = new FileReader();
-            reader.onload = ev => {
-                brandImage.src = ev.target.result;
-                brandImage.style.display = 'inline-block';
-                brandImage.style.left = '20px'; brandImage.style.top = '0px';
-                brandWidth.value = '120'; brandImage.style.width = '120px';
-                saveBrand(); makeDraggable(brandImage);
-            };
-            reader.readAsDataURL(file);
+        uploadBrand.addEventListener('click', () => {
+            brandFile.click();
         });
-        removeBrandBtn.addEventListener('click', () => {
+        brandFile.addEventListener('change', e => {
+            let f = e.target.files[0];
+            if (f && (f.type === 'image/png' || f.type === 'image/jpeg')) {
+                let reader = new FileReader();
+                reader.onload = ev => {
+                    brandImage.src = ev.target.result; brandImage.style.display = 'inline-block';
+                    brandImage.style.left = '20px'; brandImage.style.top = '0px';
+                    brandW.value = '120'; brandImage.style.width = '120px';
+                    saveBrand(); makeDraggable(brandImage);
+                }; reader.readAsDataURL(f);
+            } else alert('仅支持PNG/JPG');
+            brandFile.value = '';
+        });
+        removeBrand.addEventListener('click', () => {
             brandImage.src = ''; brandImage.style.display = 'none';
-            localStorage.removeItem('brandImg'); localStorage.removeItem('brandPos');
+            localStorage.removeItem('brandImg'); localStorage.removeItem('brandPos'); localStorage.removeItem('brandW');
         });
-        applyBrandSize.addEventListener('click', () => {
-            brandImage.style.width = brandWidth.value + 'px';
+        applyBrand.addEventListener('click', () => {
+            brandImage.style.width = brandW.value + 'px';
             saveBrand();
         });
 
         // 公司章
-        bindUpload(uploadStampBtn, stampInput, (file) => {
-            if (!file) return;
-            if (file.type !== 'image/png' && file.type !== 'image/jpeg') {
-                alert('仅支持 PNG/JPG'); return;
-            }
-            let reader = new FileReader();
-            reader.onload = ev => {
-                companyStamp.src = ev.target.result;
-                companyStamp.style.display = 'inline-block';
-                companyStamp.style.left = '150px'; companyStamp.style.top = '80px';
-                stampWidth.value = '150'; companyStamp.style.width = '150px';
-                saveStamp(); makeDraggable(companyStamp);
-            };
-            reader.readAsDataURL(file);
+        const uploadStamp = document.getElementById('uploadStampBtn');
+        const removeStamp = document.getElementById('removeStampBtn');
+        const stampW = document.getElementById('stampWidth');
+        const applyStamp = document.getElementById('applyStampSize');
+        const stampFile = document.getElementById('stampInput');
+
+        uploadStamp.addEventListener('click', () => stampFile.click());
+        stampFile.addEventListener('change', e => {
+            let f = e.target.files[0];
+            if (f && (f.type === 'image/png' || f.type === 'image/jpeg')) {
+                let reader = new FileReader();
+                reader.onload = ev => {
+                    companyStamp.src = ev.target.result; companyStamp.style.display = 'inline-block';
+                    companyStamp.style.left = '150px'; companyStamp.style.top = '80px';
+                    stampW.value = '150'; companyStamp.style.width = '150px';
+                    saveStamp(); makeDraggable(companyStamp);
+                }; reader.readAsDataURL(f);
+            } else alert('仅支持PNG/JPG');
+            stampFile.value = '';
         });
-        removeStampBtn.addEventListener('click', () => {
+        removeStamp.addEventListener('click', () => {
             companyStamp.src = ''; companyStamp.style.display = 'none';
-            localStorage.removeItem('stampImg'); localStorage.removeItem('stampPos');
+            localStorage.removeItem('stampImg'); localStorage.removeItem('stampPos'); localStorage.removeItem('stampW');
         });
-        applyStampSize.addEventListener('click', () => {
-            companyStamp.style.width = stampWidth.value + 'px';
+        applyStamp.addEventListener('click', () => {
+            companyStamp.style.width = stampW.value + 'px';
             saveStamp();
         });
 
-        // 背景图导入
-        bindUpload(importFullImageBtn, fullImageInput, (file) => {
-            if (!file) return;
-            if (!file.type.match(/image\/(png|jpeg|webp)/)) {
-                alert('仅支持图片文件'); return;
-            }
-            let reader = new FileReader();
-            reader.onload = ev => {
-                let img = new Image();
-                img.onload = () => {
-                    normalContent.style.display = 'none';
-                    imageModeContainer.style.display = 'block';
-                    controlBar.style.display = 'flex';
-                    let scale = Math.min(1, (imageModeContainer.clientWidth-20) / img.width);
-                    imageCanvas.width = img.width * scale;
-                    imageCanvas.height = img.height * scale;
-                    let ctx = imageCanvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, imageCanvas.width, imageCanvas.height);
-                    [brandImage, companyStamp].forEach(el => {
-                        if (el.style.display !== 'none') {
-                            imageModeContainer.appendChild(el);
-                            el.style.left = (imageCanvas.width/2 - parseFloat(el.style.width)/2) + 'px';
-                            el.style.top = (imageCanvas.height/2 - parseFloat(el.style.width)/2) + 'px';
-                            makeDraggable(el);
-                        }
-                    });
-                };
-                img.src = ev.target.result;
-            };
-            reader.readAsDataURL(file);
+        // 背景图
+        const importBtn = document.getElementById('importFullImageBtn');
+        const fullImgInput = document.getElementById('fullImageInput');
+        importBtn.addEventListener('click', () => fullImgInput.click());
+        fullImgInput.addEventListener('change', e => {
+            let f = e.target.files[0];
+            if (f && f.type.match(/image\/(png|jpeg|webp)/)) {
+                let reader = new FileReader();
+                reader.onload = ev => {
+                    let img = new Image();
+                    img.onload = () => {
+                        normalContent.style.display = 'none';
+                        imageModeContainer.style.display = 'block';
+                        controlBar.style.display = 'flex';
+                        let canvas = imageCanvas, ctx = canvas.getContext('2d');
+                        let scale = Math.min(1, (imageModeContainer.clientWidth-20) / img.width);
+                        canvas.width = img.width * scale; canvas.height = img.height * scale;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        [brandImage, companyStamp].forEach(el => {
+                            if (el.style.display !== 'none') {
+                                imageModeContainer.appendChild(el);
+                                el.style.left = (canvas.width/2 - parseFloat(el.style.width)/2) + 'px';
+                                el.style.top = (canvas.height/2 - parseFloat(el.style.width)/2) + 'px';
+                                makeDraggable(el);
+                            }
+                        });
+                    }; img.src = ev.target.result;
+                }; reader.readAsDataURL(f);
+            } else alert('仅支持图片文件');
+            fullImgInput.value = '';
         });
-        closeImageModeBtn.addEventListener('click', () => {
+        document.getElementById('closeImageModeBtn').addEventListener('click', () => {
             normalContent.style.display = 'block';
             imageModeContainer.style.display = 'none';
             controlBar.style.display = 'none';
@@ -619,12 +660,12 @@
             });
         });
 
-        // 恢复缓存
+        // 恢复已保存的图片
         restoreBrand();
         restoreStamp();
     }
 
-    // 导出逻辑（保持原有）
+    // ===================== 导出功能（无打印） =====================
     async function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
@@ -634,10 +675,11 @@
         clone.querySelector('#editRemarkBtn')?.remove();
         if (wmText) {
             let wm = document.createElement('div'); wm.className = 'watermark-layer';
-            let c = document.createElement('canvas'); c.width = 200; c.height = 200;
+            let c = document.createElement('canvas'); c.width=200; c.height=200;
             let ctx = c.getContext('2d');
-            ctx.font = 'bold 20px "PingFang SC"'; ctx.fillStyle = '#7f8c8d';
-            ctx.translate(100,100); ctx.rotate(-0.5); ctx.fillText(wmText, 0, 0);
+            ctx.font='bold 20px "PingFang SC"'; ctx.fillStyle='#7f8c8d';
+            ctx.translate(100,100); ctx.rotate(-0.5);
+            ctx.fillText(wmText,0,0);
             wm.style.backgroundImage = `url(${c.toDataURL()})`;
             clone.appendChild(wm);
         }
@@ -645,49 +687,50 @@
         return clone;
     }
     async function exportImage() {
-        saveAsImageBtn.disabled = true;
+        saveAsImageBtn.disabled = true; saveAsImageBtn.innerText = '生成中...';
         try {
             let wm = localStorage.getItem('lastWatermark_v2') ? await askWatermark() : null;
             let clone = await getExportClone(wm);
-            clone.style.position = 'absolute'; clone.style.left = '-9999px'; document.body.appendChild(clone);
+            clone.style.position='absolute'; clone.style.left='-9999px'; document.body.appendChild(clone);
             await new Promise(r => setTimeout(r, 100));
-            let canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#fff', logging: false });
+            let canvas = await html2canvas(clone, { scale:2, backgroundColor:'#fff', logging:false });
             document.body.removeChild(clone);
             let data = canvas.toDataURL('image/png');
-            let name = `销售单_${invoiceNo.innerText}.png`;
+            let name = `销售单_${document.getElementById('invoiceNo').innerText}.png`;
             if (!nativeSave(data, name, 'image/png')) {
                 let a = document.createElement('a'); a.download = name; a.href = data; a.click();
-                showToast('已下载 (如需存相册请授权)');
+                showToast('已使用浏览器下载');
             } else showToast('图片已保存');
-        } catch(e) { alert('出错：'+e.message); }
-        finally { saveAsImageBtn.disabled = false; }
+        } catch(e) { alert('出错'); }
+        finally { saveAsImageBtn.disabled = false; saveAsImageBtn.innerText = '📷 保存为图片'; }
     }
     async function exportPDF() {
-        downloadPdfBtn.disabled = true;
+        downloadPdfBtn.disabled = true; downloadPdfBtn.innerText = '生成PDF...';
         try {
             let wm = localStorage.getItem('lastWatermark_v2') ? await askWatermark() : null;
             let clone = await getExportClone(wm);
-            clone.style.position = 'absolute'; clone.style.left = '-9999px'; document.body.appendChild(clone);
+            clone.style.position='absolute'; clone.style.left='-9999px'; document.body.appendChild(clone);
             await new Promise(r => setTimeout(r, 100));
-            let canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#fff' });
+            let canvas = await html2canvas(clone, { scale:2, backgroundColor:'#fff' });
             document.body.removeChild(clone);
             let { jsPDF } = window.jspdf;
-            let pdf = new jsPDF('p', 'mm', 'a4');
+            let pdf = new jsPDF('p','mm','a4');
             let w = pdf.internal.pageSize.getWidth();
             let ratio = w / canvas.width;
-            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, w, canvas.height*ratio);
-            let name = `销售单_${invoiceNo.innerText}.pdf`;
+            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0,0,w,canvas.height*ratio);
+            let name = `销售单_${document.getElementById('invoiceNo').innerText}.pdf`;
             if (!nativeSave(pdf.output('datauristring'), name, 'application/pdf')) {
-                pdf.save(name); showToast('已下载');
+                pdf.save(name);
+                showToast('已使用浏览器下载');
             } else showToast('PDF已保存');
-        } catch(e) { alert('出错：'+e.message); }
-        finally { downloadPdfBtn.disabled = false; }
+        } catch(e) { alert('出错'); }
+        finally { downloadPdfBtn.disabled = false; downloadPdfBtn.innerText = '📄 下载 PDF'; }
     }
     function askWatermark() {
         return new Promise(resolve => {
             if (!confirm('添加水印？')) { resolve(null); return; }
             let def = localStorage.getItem('lastWatermark_v2') || 'XX公司收款专用2026';
-            let inp = prompt('水印文字 (最多18字)', def);
+            let inp = prompt('水印文字(最多18字)', def);
             if (!inp) { resolve(null); return; }
             let t = inp.trim();
             if (t && t.length <= 18) {
@@ -697,7 +740,7 @@
         });
     }
 
-    // 事件绑定
+    // ===================== 事件绑定 =====================
     function bindEvents() {
         addItemBtn.onclick = () => {
             let name = prodName.value.trim(); if (!name) return alert('输入名称');
@@ -715,21 +758,21 @@
         [editCompany, editPhone, editContact, editSigner, editCustomer].forEach(el => el.addEventListener('input', syncInfo));
         saveAsImageBtn.onclick = exportImage;
         downloadPdfBtn.onclick = exportPDF;
-        printBtn.onclick = () => { window.print(); };
-        parseBtn.onclick = () => {
-            let lines = batchRawInput.value.split('\n').filter(l=>l.trim());
+        // 批量解析
+        document.getElementById('parseBtn').onclick = () => {
+            let lines = document.getElementById('batchRawInput').value.split('\n').filter(l=>l.trim());
             let res = lines.map(line => {
                 let m = line.match(/(.+?)\s+(\d+)\s*([\u4e00-\u9fa5])?\s+(\d+)/);
                 if (m) return { name:m[1], qty:parseFloat(m[2]), unit:m[3]||'个', price:parseFloat(m[4]) };
                 return null;
             }).filter(Boolean);
-            parsePreview.innerHTML = res.length ? res.map(r => `<span>${r.name} ${r.qty}${r.unit} ¥${r.price}</span>`).join('') : '⚠️ 未识别';
+            document.getElementById('parsePreview').innerHTML = res.length ? res.map(r => `<span style="display:inline-block; background:#f1f5f9; border-radius:24px; padding:4px 12px; margin:4px;">✅ ${r.name} ${r.qty}${r.unit} ¥${r.price.toFixed(2)}</span>`).join('') : '⚠️ 未识别';
             window._batch = res;
         };
-        confirmAddBatchBtn.onclick = () => {
+        document.getElementById('confirmAddBatchBtn').onclick = () => {
             if (!window._batch?.length) { alert('请先解析'); return; }
             window._batch.forEach(p => items.push({...p, remark:''}));
-            window._batch = []; parsePreview.innerHTML='✅ 已添加'; renderTable();
+            window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
         };
     }
 
@@ -741,16 +784,16 @@
         document.getElementById('tab-' + b.dataset.tab).classList.add('active-pane');
     }));
 
-    // 初始化
-    setMeta();
+    // 启动
+    setInvoiceMeta();
     bindEvents();
-    initImageControls();
+    initImageControls();   // 商标管理初始化
     if (!loadData()) {
-        items = [{ name:'示例商品', unit:'个', qty:1, price:0, remark:'' }];
+        items = [{ name:'示例商品', unit:'个', qty:1, price:0.00, remark:'' }];
         selectedIndex = 0; renderTable();
     }
     resizeApp();
-    if (isAndroid) { try { AndroidBridge.onPageLoaded(); } catch(e) {} }
+    if (isAndroid) { try { AndroidBridge.requestStoragePermission(); } catch(e) {} }
 </script>
 </body>
 </html>
