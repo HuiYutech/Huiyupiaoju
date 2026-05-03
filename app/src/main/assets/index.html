@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!-- 关键：固定宽度794，禁止自动缩放，允许用户手动缩放 -->
     <meta name="viewport" content="width=794, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>慧语电子票据</title>
     <script src="js/html2canvas.min.js"></script>
@@ -18,7 +19,7 @@
             font-family: 'Segoe UI', 'PingFang SC', '微软雅黑', Roboto, sans-serif;
             margin: 0;
             padding: 0;
-            overflow-x: hidden;
+            overflow-x: auto;           /* 允许横向滚动，手机可滑动查看 */
             display: flex;
             justify-content: center;
             align-items: flex-start;
@@ -26,7 +27,6 @@
         }
         #app-wrapper {
             width: 794px;
-            transform-origin: top center;
             padding: 10px 0 30px 0;
             display: flex;
             flex-direction: column;
@@ -325,7 +325,7 @@
 </div>
 
 <script>
-    // 元素引用
+    // ===================== 元素引用 =====================
     const appWrapper = document.getElementById('app-wrapper');
     const brandImage = document.getElementById('brandImage');
     const companyStamp = document.getElementById('companyStamp');
@@ -335,16 +335,7 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
-    // ===================== 统一缩放：手机缩小，平板/电脑不放大 =====================
-    function resizeApp() {
-        const w = window.innerWidth;
-        const scale = Math.min(1, w / 794);   // 最大不超过1，即不放大
-        appWrapper.style.transform = `scale(${scale})`;
-        appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
-    }
-    window.addEventListener('resize', resizeApp);
-    window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
-    window.addEventListener('load', () => setTimeout(resizeApp, 30));
+    // 注意：此处没有 JS 缩放，所有设备使用原始 794px 宽度
 
     // ===================== Android 桥接 =====================
     function showToast(msg) {
@@ -681,7 +672,7 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // ===================== 导出（含水印，固定宽度） =====================
+    // ===================== 导出（必定询问水印，固定宽度） =====================
     async function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
@@ -708,19 +699,21 @@
     }
     async function askWatermark() {
         return new Promise(resolve => {
-            if (!confirm('添加水印？')) { resolve(null); return; }
+            if (!confirm('是否添加防伪水印？\n点击"确定"添加，取消则不添加。')) { resolve(null); return; }
             let def = localStorage.getItem('lastWatermark_v2') || 'XX示例水印';
-            let inp = prompt('水印文字(最多18字)', def);
-            if (!inp) { resolve(null); return; }
+            let inp = prompt('请输入水印文字（最多18个字符）:', def);
+            if (inp === null) { resolve(null); return; }
             let t = inp.trim();
-            if (t && t.length <= 18) { localStorage.setItem('lastWatermark_v2', t); resolve(t); }
-            else { alert('无效'); resolve(null); }
+            if (!t) { alert('水印内容不能为空，将不添加水印。'); resolve(null); return; }
+            if (t.length > 18) { alert('水印文字超过18个字符，请重新输入。'); resolve(null); return; }
+            localStorage.setItem('lastWatermark_v2', t);
+            resolve(t);
         });
     }
     async function exportImage() {
         let btn = document.getElementById('saveAsImageBtn'); btn.disabled = true; btn.innerText = '生成中...';
         try {
-            let wm = localStorage.getItem('lastWatermark_v2') ? await askWatermark() : null;
+            let wm = await askWatermark();   // 每次必定询问
             let clone = await getExportClone(wm);
             document.body.appendChild(clone);
             await new Promise(r => setTimeout(r, 150));
@@ -738,7 +731,7 @@
     async function exportPDF() {
         let btn = document.getElementById('downloadPdfBtn'); btn.disabled = true; btn.innerText = '生成PDF...';
         try {
-            let wm = localStorage.getItem('lastWatermark_v2') ? await askWatermark() : null;
+            let wm = await askWatermark();   // 每次必定询问
             let clone = await getExportClone(wm);
             document.body.appendChild(clone);
             await new Promise(r => setTimeout(r, 150));
@@ -774,7 +767,6 @@
         items = [{ name: '示例商品', unit: '个', qty: 1, price: 10.00, remark: '类型A' }];
         selectedIndex = 0; renderTable();
     } else renderTable();
-    resizeApp();
     if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
         try { AndroidBridge.requestStoragePermission(); } catch(e) {}
     }
