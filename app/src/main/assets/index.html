@@ -31,7 +31,6 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* margin 由 JS 动态控制，初始化为 auto */
             margin: 0 auto;
         }
         .invoice-container,
@@ -186,11 +185,11 @@
 </head>
 <body>
 <div id="app-wrapper">
-    <!-- 票据容器（内容完整，与之前相同） -->
     <div class="invoice-container" id="invoiceContainer">
         <div class="normal-content" id="normalContent">
             <img id="brandImage" class="brand-overlay" src="" alt="品牌图" style="display:none;">
             <img id="companyStamp" class="company-stamp" src="" alt="公司章" style="display:none;">
+
             <div class="header-info" style="text-align:center; margin-bottom:12px;">
                 <div class="company-title" style="font-size:24px; font-weight:800; color:#0b3b4f;">XX示例科技有限公司销售单</div>
                 <div class="sub-title" style="font-size:13px; color:#2c3e50;">联系电话：100-000000 &nbsp;|&nbsp; 联系人：示例先生</div>
@@ -221,6 +220,7 @@
                 <span><strong>单据编号：</strong><span id="invoiceNo">XS-20260507</span></span>
             </div>
         </div>
+
         <div class="image-mode-container" id="imageModeContainer">
             <canvas id="imageCanvas"></canvas>
         </div>
@@ -231,7 +231,6 @@
         </div>
     </div>
 
-    <!-- 控制面板（与之前相同） -->
     <div class="control-panel" id="controlPanel">
         <div class="tab-buttons">
             <button class="tab-btn active" data-tab="basic">基本资料</button>
@@ -334,16 +333,21 @@
     const imageModeContainer = document.getElementById('imageModeContainer');
     const imageCanvas = document.getElementById('imageCanvas');
     const controlBar = document.getElementById('imageControlBarExternal');
-    let originalImage = null, rotation = 0, scale = 1;
+    let originalImage = null, rotation = 0;
 
-    // ===================== 动态缩放（解决平板窄、手机溢出的根本方案） =====================
+    // ===================== 动态缩放逻辑 =====================
     function resizeApp() {
-        const windowWidth = window.innerWidth;
-        const s = Math.min(windowWidth / 794, 1.5); // 最大放大至1.5倍
-        appWrapper.style.transform = `scale(${s})`;
-        // 消除缩放带来的额外占位空白
-        appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - s)}px`;
-        // 保持居中（body flex居中已处理）
+        const w = window.innerWidth;
+        if (w < 794) {
+            // 手机端：缩放至屏幕宽度，只显示功能区，无左右留白
+            const scale = w / 794;
+            appWrapper.style.transform = `scale(${scale})`;
+            appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
+        } else {
+            // 平板端及以上：不缩放，保持原宽度
+            appWrapper.style.transform = 'none';
+            appWrapper.style.marginBottom = '0';
+        }
     }
     window.addEventListener('resize', resizeApp);
     window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
@@ -373,6 +377,7 @@
     // ===================== 业务数据 =====================
     let items = [], selectedIndex = -1;
     const STORAGE_KEY = 'invoiceData_v2';
+
     function saveData() {
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify({
             items, selectedIndex,
@@ -457,7 +462,8 @@
 
     // ===================== 商品操作事件 =====================
     document.getElementById('addItemBtn').onclick = () => {
-        let n = document.getElementById('prodName').value.trim(); if (!n) return alert('请输入商品名称');
+        let n = document.getElementById('prodName').value.trim();
+        if (!n) return alert('请输入商品名称');
         items.push({ name: n, unit: document.getElementById('prodUnit').value||'个',
             qty: parseFloat(document.getElementById('prodQty').value)||1,
             price: parseFloat(document.getElementById('prodPrice').value)||0,
