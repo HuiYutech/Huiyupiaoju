@@ -61,7 +61,6 @@ public class MainActivity extends AppCompatActivity {
         }
         
         webView = new WebView(this);
-        // 关键：设置背景与网页一致，消除横屏左侧黑边
         webView.setBackgroundColor(Color.parseColor("#eef2f5"));
         setContentView(webView);
         webView.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);
@@ -75,13 +74,12 @@ public class MainActivity extends AppCompatActivity {
         settings.setAllowContentAccess(true);
         settings.setDomStorageEnabled(true);
         
-        // 允许缩放（用户可手动放大查看细节）
+        // 允许手动缩放，同时启动时自动适应屏幕宽度
         settings.setSupportZoom(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
-        
-        settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);       // 关键：让页面适应屏幕宽，手机自动缩小
+        settings.setLoadWithOverviewMode(true);  // 关键：初始加载时以缩略图显示全页
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
