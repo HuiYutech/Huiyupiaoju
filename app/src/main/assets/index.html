@@ -2,7 +2,8 @@
 <html lang="zh-CN" style="background:#eef2f5;">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=794, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <!-- 固定宽度794，禁止用户手动缩放，禁止自动适配 -->
+    <meta name="viewport" content="width=794, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>慧语电子票据</title>
     <script src="js/html2canvas.min.js"></script>
     <script src="js/jspdf.umd.min.js"></script>
@@ -74,7 +75,6 @@
 </head>
 <body>
 <div id="app-wrapper">
-    <!-- 票据容器 -->
     <div class="invoice-container" id="invoiceContainer">
         <div class="normal-content" id="normalContent">
             <img id="brandImage" class="brand-overlay" src="" alt="品牌图" style="display:none;">
@@ -120,7 +120,6 @@
         </div>
     </div>
 
-    <!-- 控制面板 -->
     <div class="control-panel" id="controlPanel">
         <div class="tab-buttons">
             <button class="tab-btn active" data-tab="basic">基本资料</button>
@@ -209,7 +208,6 @@
 </div>
 
 <script>
-    // ===================== 全局引用 =====================
     const brandImage = document.getElementById('brandImage');
     const companyStamp = document.getElementById('companyStamp');
     const normalContent = document.getElementById('normalContent');
@@ -219,7 +217,7 @@
     const appWrapper = document.getElementById('app-wrapper');
     let originalImage = null, rotation = 0;
 
-    // ===================== 动态缩放 =====================
+    // 动态缩放：手机屏幕宽度 < 794px 时缩小页面至屏幕宽
     function resizeApp() {
         const w = window.innerWidth;
         if (w < 794) {
@@ -235,7 +233,6 @@
     window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
     window.addEventListener('load', () => setTimeout(resizeApp, 30));
 
-    // ===================== Android 桥接 =====================
     function showToast(msg) {
         if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
             try { AndroidBridge.showToast(msg); } catch(e) {}
@@ -256,7 +253,6 @@
         return false;
     }
 
-    // ===================== 业务数据 =====================
     let items = [], selectedIndex = -1;
     const STORAGE_KEY = 'invoiceData_v2';
     const UNITS = new Set(['个','台','套','根','件','只','条','支','箱','包','瓶','盒','桶','双','对','米','千克','公斤','克','升','毫升','袋','卷','组','部','块','片','张','把','粒','罐','打','份','册','本','辆','架','顶','副','串','捆','扎','排','座','栋','扇','盏','枚','轴','码','英尺','英寸','厘米','毫米','GB','TB']);
@@ -353,7 +349,7 @@
         document.getElementById('amountCN').innerHTML = convertCurrency(sub);
     }
 
-    // ===================== 商品操作事件绑定 =====================
+    // 商品操作事件绑定
     document.getElementById('addItemBtn').onclick = () => {
         let n = document.getElementById('prodName').value.trim(); if (!n) return alert('请输入商品名称');
         items.push({ name: n, unit: document.getElementById('prodUnit').value||'个',
@@ -391,7 +387,7 @@
         document.getElementById(id).addEventListener('input', syncInfo);
     });
 
-    // ===================== 图片拖拽与存储 =====================
+    // 图片拖拽与存储
     function makeDraggable(el) {
         if (!el) return;
         let drag=false, sx, sy, sl, st;
@@ -452,7 +448,6 @@
         }
     }
 
-    // ===================== 商标管理函数 =====================
     function placeOverlayInContainer(el) {
         if (imageModeContainer.style.display === 'block') {
             if (el.parentNode !== imageModeContainer) {
@@ -523,7 +518,6 @@
         placeOverlayInContainer(companyStamp);
     }
 
-    // ===================== 背景图旋转，A4 容器方向随旋转自适应 =====================
     function redrawCanvas() {
         if (!originalImage) return;
         const canvas = imageCanvas, ctx = canvas.getContext('2d');
@@ -531,7 +525,6 @@
         const rad = rotation * Math.PI / 180;
         const cos = Math.abs(Math.cos(rad)), sin = Math.abs(Math.sin(rad));
         const newW = w * cos + h * sin, newH = w * sin + h * cos;
-        
         let containerW, containerH;
         if (rotation % 180 === 0) { containerW = 794; containerH = 1123; }
         else { containerW = 1123; containerH = 794; }
@@ -539,12 +532,10 @@
         const scale = Math.min(maxWidth / containerW, 1);
         containerW *= scale;
         containerH *= scale;
-        
         imageModeContainer.style.width = containerW + 'px';
         imageModeContainer.style.height = containerH + 'px';
         canvas.width = containerW;
         canvas.height = containerH;
-        
         ctx.fillStyle = '#e8e8e8';
         ctx.fillRect(0, 0, containerW, containerH);
         const imgScale = Math.min(containerW / newW, containerH / newH);
@@ -554,8 +545,6 @@
         ctx.rotate(rad);
         ctx.drawImage(originalImage, -drawW/2, -drawH/2, drawW, drawH);
         ctx.restore();
-        
-        // 品牌图和公司章居中
         [brandImage, companyStamp].forEach(el => {
             if (el.style.display !== 'none' && el.parentNode === imageModeContainer) {
                 const elW = parseFloat(el.style.width) || 120;
@@ -606,7 +595,6 @@
         imageCanvas.width = 0; imageCanvas.height = 0;
     };
 
-    // ===================== 批量解析 =====================
     function parseBatch() {
         let lines = document.getElementById('batchRawInput').value.split('\n').filter(l=>l.trim());
         let res = lines.map(line => {
@@ -622,7 +610,6 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // ===================== 导出（去除蓝条、水印、文件名） =====================
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
@@ -650,15 +637,13 @@
     }
     function askWatermark() {
         return new Promise(resolve => {
-            if (!confirm('是否添加防伪水印？\n点击“确定”添加，取消则不添加。')) { resolve(null); return; }
+            if (!confirm('是否添加防伪水印？')) { resolve(null); return; }
             let def = localStorage.getItem('lastWatermark_v2') || 'XX示例水印';
-            let inp = prompt('请输入水印文字（最多18个字符）:', def);
-            if (inp === null) { resolve(null); return; }
+            let inp = prompt('水印文字(最多18字)', def);
+            if (!inp) { resolve(null); return; }
             let t = inp.trim();
-            if (!t) { alert('水印内容不能为空'); resolve(null); return; }
-            if (t.length > 18) { alert('最多18个字符'); resolve(null); return; }
-            localStorage.setItem('lastWatermark_v2', t);
-            resolve(t);
+            if (t && t.length <= 18) { localStorage.setItem('lastWatermark_v2', t); resolve(t); }
+            else { alert('无效'); resolve(null); }
         });
     }
     function getTimestamp() {
@@ -710,7 +695,6 @@
         finally { btn.disabled = false; btn.innerText = '📄 下载 PDF'; }
     }
 
-    // ===================== 标签切换 =====================
     document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
@@ -718,7 +702,6 @@
         document.getElementById('tab-' + b.dataset.tab).classList.add('active-pane');
     }));
 
-    // ===================== 初始化 =====================
     setInvoiceMeta();
     restoreBrand();
     restoreStamp();
