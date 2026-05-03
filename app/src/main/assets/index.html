@@ -8,8 +8,8 @@
     <script src="js/jspdf.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
-        body { background: #eef2f5; font-family: 'Segoe UI','PingFang SC','微软雅黑',Roboto,sans-serif; margin: 0; padding: 0; overflow-x: auto; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
-        #app-wrapper { width: 794px; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
+        body { background: #eef2f5; font-family: 'Segoe UI','PingFang SC','微软雅黑',Roboto,sans-serif; margin: 0; padding: 0; overflow-x: hidden; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
+        #app-wrapper { width: 794px; transform-origin: top center; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
         .invoice-container, .control-panel, .btn-group { width: 794px; }
         .invoice-container { position: relative; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-radius: 20px; padding: 12mm 7px 15mm 7px; margin-bottom: 16px; overflow: visible; user-select: none; -webkit-user-select: none; }
         .normal-content { display: block; }
@@ -207,6 +207,7 @@
 </div>
 
 <script>
+    const appWrapper = document.getElementById('app-wrapper');
     const brandImage = document.getElementById('brandImage');
     const companyStamp = document.getElementById('companyStamp');
     const normalContent = document.getElementById('normalContent');
@@ -215,7 +216,16 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
-    // 注意：不再需要 resizeApp，缩放完全由 WebView 设置处理
+    // 全局缩放：所有设备都缩放至视口宽度，无背景留白
+    function resizeApp() {
+        const w = window.innerWidth;
+        const scale = w / 794;
+        appWrapper.style.transform = `scale(${scale})`;
+        appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
+    }
+    window.addEventListener('resize', resizeApp);
+    window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
+    window.addEventListener('load', () => setTimeout(resizeApp, 30));
 
     function showToast(msg) {
         if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
@@ -426,24 +436,18 @@
         const rect = invoiceNoEl.getBoundingClientRect();
         const containerRect = document.getElementById('invoiceContainer').getBoundingClientRect();
         const stampWidth = parseFloat(companyStamp.style.width) || 150;
-        const stampHeight = stampWidth;
         const centerX = rect.left + rect.width/2 - containerRect.left - stampWidth/2;
-        const centerY = rect.top + rect.height/2 - containerRect.top - stampHeight/2;
+        const centerY = rect.top + rect.height/2 - containerRect.top - stampWidth/2;
         companyStamp.style.left = Math.max(0, centerX) + 'px';
         companyStamp.style.top = Math.max(0, centerY) + 'px';
     }
     function restoreStamp() {
         let src = localStorage.getItem('stampImg');
         if (src) {
-            companyStamp.src = src;
-            companyStamp.style.display = 'inline-block';
-            let pos = JSON.parse(localStorage.getItem('stampPos') || '{}');
-            if (pos.l && pos.t) {
-                companyStamp.style.left = pos.l;
-                companyStamp.style.top = pos.t;
-            } else {
-                positionStampAtInvoiceNo();
-            }
+            companyStamp.src = src; companyStamp.style.display = 'inline-block';
+            let pos = JSON.parse(localStorage.getItem('stampPos')||'{}');
+            companyStamp.style.left = pos.l || '150px'; companyStamp.style.top = pos.t || '80px';
+            if (!pos.l) positionStampAtInvoiceNo();
             document.getElementById('stampWidth').value = localStorage.getItem('stampW')||'150';
             companyStamp.style.width = document.getElementById('stampWidth').value + 'px';
             makeDraggable(companyStamp);
@@ -470,15 +474,12 @@
             reader.onload = ev => {
                 brandImage.src = ev.target.result;
                 brandImage.style.display = 'inline-block';
-                brandImage.style.left = '20px';
-                brandImage.style.top = '0px';
+                brandImage.style.left = '20px'; brandImage.style.top = '0px';
                 document.getElementById('brandWidth').value = '120';
                 brandImage.style.width = '120px';
-                saveBrand();
-                makeDraggable(brandImage);
+                saveBrand(); makeDraggable(brandImage);
                 placeOverlayInContainer(brandImage);
-            };
-            reader.readAsDataURL(f);
+            }; reader.readAsDataURL(f);
         } else alert('仅支持PNG/JPG');
         input.value = '';
     }
@@ -488,8 +489,7 @@
     }
     function applyBrandSize() {
         brandImage.style.width = document.getElementById('brandWidth').value + 'px';
-        saveBrand();
-        placeOverlayInContainer(brandImage);
+        saveBrand(); placeOverlayInContainer(brandImage);
     }
     function handleStampUpload(input) {
         let f = input.files[0];
@@ -501,11 +501,9 @@
                 document.getElementById('stampWidth').value = '150';
                 companyStamp.style.width = '150px';
                 positionStampAtInvoiceNo();
-                saveStamp();
-                makeDraggable(companyStamp);
+                saveStamp(); makeDraggable(companyStamp);
                 placeOverlayInContainer(companyStamp);
-            };
-            reader.readAsDataURL(f);
+            }; reader.readAsDataURL(f);
         } else alert('仅支持PNG/JPG');
         input.value = '';
     }
@@ -515,10 +513,10 @@
     }
     function applyStampSize() {
         companyStamp.style.width = document.getElementById('stampWidth').value + 'px';
-        saveStamp();
-        placeOverlayInContainer(companyStamp);
+        saveStamp(); placeOverlayInContainer(companyStamp);
     }
 
+    // 背景图旋转与居中
     function redrawCanvas() {
         if (!originalImage) return;
         const canvas = imageCanvas, ctx = canvas.getContext('2d');
@@ -526,31 +524,19 @@
         const rad = rotation * Math.PI / 180;
         const cos = Math.abs(Math.cos(rad)), sin = Math.abs(Math.sin(rad));
         const newW = w * cos + h * sin, newH = w * sin + h * cos;
-        let containerW, containerH;
-        if (rotation % 180 === 0) { containerW = 794; containerH = 1123; }
-        else { containerW = 1123; containerH = 794; }
-        const maxWidth = window.innerWidth < 794 ? window.innerWidth : 794;
-        const scale = Math.min(maxWidth / containerW, 1);
-        containerW *= scale;
-        containerH *= scale;
-        imageModeContainer.style.width = containerW + 'px';
-        imageModeContainer.style.height = containerH + 'px';
-        canvas.width = containerW;
-        canvas.height = containerH;
-        ctx.fillStyle = '#e8e8e8';
-        ctx.fillRect(0, 0, containerW, containerH);
-        const imgScale = Math.min(containerW / newW, containerH / newH);
-        const drawW = newW * imgScale, drawH = newH * imgScale;
-        ctx.save();
-        ctx.translate(containerW/2, containerH/2);
-        ctx.rotate(rad);
-        ctx.drawImage(originalImage, -drawW/2, -drawH/2, drawW, drawH);
+        let cw = imageModeContainer.clientWidth || 794;
+        let ch = (cw / newW) * newH;
+        canvas.width = cw; canvas.height = ch;
+        ctx.fillStyle = '#e8e8e8'; ctx.fillRect(0,0,cw,ch);
+        const scale = Math.min(cw/newW, ch/newH);
+        ctx.save(); ctx.translate(cw/2, ch/2); ctx.rotate(rad);
+        ctx.drawImage(originalImage, -w*scale/2, -h*scale/2, w*scale, h*scale);
         ctx.restore();
         [brandImage, companyStamp].forEach(el => {
             if (el.style.display !== 'none' && el.parentNode === imageModeContainer) {
                 const elW = parseFloat(el.style.width) || 120;
-                el.style.left = (containerW/2 - elW/2) + 'px';
-                el.style.top = (containerH/2 - elW/2) + 'px';
+                el.style.left = (cw/2 - elW/2) + 'px';
+                el.style.top = (ch/2 - elW/2) + 'px';
             }
         });
     }
@@ -561,8 +547,7 @@
             reader.onload = ev => {
                 const img = new Image();
                 img.onload = () => {
-                    originalImage = img;
-                    rotation = 0;
+                    originalImage = img; rotation = 0;
                     normalContent.style.display = 'none';
                     imageModeContainer.style.display = 'block';
                     controlBar.style.display = 'flex';
@@ -573,10 +558,8 @@
                         }
                     });
                     redrawCanvas();
-                };
-                img.src = ev.target.result;
-            };
-            reader.readAsDataURL(f);
+                }; img.src = ev.target.result;
+            }; reader.readAsDataURL(f);
         } else alert('仅支持图片文件');
         input.value = '';
     }
@@ -592,10 +575,11 @@
                 makeDraggable(el);
             }
         });
-        originalImage = null;
-        imageCanvas.width = 0; imageCanvas.height = 0;
+        originalImage = null; imageCanvas.width = 0; imageCanvas.height = 0;
+        location.reload();
     };
 
+    // 批量解析
     function parseBatch() {
         let lines = document.getElementById('batchRawInput').value.split('\n').filter(l=>l.trim());
         let res = lines.map(line => {
@@ -611,26 +595,24 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
+    // 导出（去蓝条、水印18字、文件名公司+时间）
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
         clone.querySelectorAll('.selected-row').forEach(r => r.classList.remove('selected-row'));
-        clone.style.width = '794px';
-        clone.style.position = 'absolute';
-        clone.style.left = '-9999px';
-        clone.style.top = '0';
-        clone.style.transform = 'none';
+        clone.style.width = '794px'; clone.style.position = 'absolute';
+        clone.style.left = '-9999px'; clone.style.top = '0'; clone.style.transform = 'none';
         clone.querySelector('#imageModeContainer').style.display = 'none';
         clone.querySelector('#imageControlBarExternal')?.remove();
         clone.querySelector('#normalContent').style.display = 'block';
         clone.querySelector('#editRemarkBtn')?.remove();
         if (wmText) {
             let wm = document.createElement('div'); wm.className = 'watermark-layer';
-            let c = document.createElement('canvas'); c.width=200; c.height=200;
+            let c = document.createElement('canvas'); c.width=400; c.height=400;
             let ctx = c.getContext('2d');
-            ctx.font='bold 20px "PingFang SC"'; ctx.fillStyle='#7f8c8d';
-            ctx.translate(100,100); ctx.rotate(-0.5);
-            ctx.fillText(wmText,0,0);
+            ctx.font='bold 16px "PingFang SC"'; ctx.fillStyle='#7f8c8d';
+            ctx.translate(200,200); ctx.rotate(-20 * Math.PI / 180);
+            ctx.textAlign='center'; ctx.fillText(wmText,0,0);
             wm.style.backgroundImage = `url(${c.toDataURL()})`;
             clone.appendChild(wm);
         }
@@ -713,6 +695,7 @@
         items = [{ name: '示例商品', unit: '个', qty: 1, price: 10.00, remark: '类型A' }];
         selectedIndex = 0; renderTable();
     } else renderTable();
+    resizeApp();
     if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
         try { AndroidBridge.requestStoragePermission(); } catch(e) {}
     }
