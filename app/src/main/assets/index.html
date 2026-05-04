@@ -218,17 +218,6 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
-    function updateScalable() {
-        const meta = document.querySelector('meta[name="viewport"]');
-        if (window.innerWidth >= 794) {
-            meta.content = 'width=794, initial-scale=1.0, user-scalable=no, viewport-fit=cover';
-        } else {
-            meta.content = 'width=794, initial-scale=1.0, user-scalable=yes, viewport-fit=cover';
-        }
-    }
-    window.addEventListener('resize', updateScalable);
-    window.addEventListener('load', updateScalable);
-
     function resizeApp() {
         const w = window.innerWidth;
         const scale = Math.min(1, w / 794);
@@ -608,7 +597,7 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // 导出（水印16px，更清晰）
+    // 导出（水印16px）
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
@@ -710,7 +699,6 @@
         selectedIndex = 0; renderTable();
     } else renderTable();
     resizeApp();
-    updateScalable();
     if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
         try { AndroidBridge.requestStoragePermission(); } catch(e) {}
     }
