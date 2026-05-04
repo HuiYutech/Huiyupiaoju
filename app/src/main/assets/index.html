@@ -10,6 +10,10 @@
         * { box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
         body { background: #eef2f5; font-family: 'Segoe UI','PingFang SC','微软雅黑',Roboto,sans-serif; margin: 0; padding: 0; overflow-x: hidden; overflow-y: auto; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
         #app-wrapper { width: 794px; transform-origin: top center; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
+        /* 电脑/平板 1.5K 分辨率显示 */
+        @media (min-width: 794px) {
+            #app-wrapper { transform: scale(1.5); }
+        }
         .invoice-container, .control-panel, .btn-group { width: 794px; }
         .invoice-container { position: relative; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-radius: 20px; padding: 45px 7px 57px 7px; margin-bottom: 16px; overflow: visible; user-select: none; -webkit-user-select: none; }
         .normal-content { display: block; }
@@ -226,9 +230,11 @@
 
     function resizeApp() {
         const w = window.innerWidth;
-        const scale = Math.min(1, w / 794);
-        appWrapper.style.transform = `scale(${scale})`;
-        appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
+        if (w < 794) {
+            const scale = w / 794;
+            appWrapper.style.transform = `scale(${scale})`;
+            appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
+        }
     }
     window.addEventListener('resize', resizeApp);
     window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
