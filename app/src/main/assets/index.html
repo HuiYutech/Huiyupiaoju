@@ -11,7 +11,7 @@
         body { background: #eef2f5; font-family: 'Segoe UI','PingFang SC','微软雅黑',Roboto,sans-serif; margin: 0; padding: 0; overflow-x: hidden; overflow-y: auto; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
         #app-wrapper { width: 794px; transform-origin: top center; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
         .invoice-container, .control-panel, .btn-group { width: 794px; }
-        .invoice-container { position: relative; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-radius: 20px; padding: 12mm 7px 15mm 7px; margin-bottom: 16px; overflow: visible; user-select: none; -webkit-user-select: none; }
+        .invoice-container { position: relative; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-radius: 20px; padding: 45px 7px 57px 7px; margin-bottom: 16px; overflow: visible; user-select: none; -webkit-user-select: none; }
         .normal-content { display: block; }
         .image-mode-container { display: none; background: #e8e8e8; border-radius: 8px; text-align: center; position: relative; overflow: hidden; min-height: 80px; margin: 0 auto; }
         .image-mode-container canvas { display: block; margin: 0 auto; max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -24,7 +24,6 @@
         .company-stamp { z-index: 9999; opacity: 0.85; display: none; }
         .brand-overlay.dragging, .company-stamp.dragging { cursor: grabbing; opacity: 0.7; }
         .control-panel { background: white; border-radius: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); margin-bottom: 12px; border:1px solid #e2edf2; overflow: hidden; }
-        /* 标签栏背景改为白色 */
         .tab-buttons { display: flex; background: #ffffff; border-bottom: 1px solid #e2edf2; overflow-x: auto; }
         .tab-btn { flex: 1; padding: 12px 8px; background: transparent; border: none; font-size: 14px; font-weight: 600; color: #4a627a; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
         .tab-btn.active { color: #2c7da0; border-bottom-color: #2c7da0; background: #f8fafc; }
@@ -51,7 +50,6 @@
         .sales-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 14px; font-family: 'Consolas','PingFang SC', monospace; }
         .sales-table th, .sales-table td { border: 2px solid #1e2f3a; padding: 8px 6px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .sales-table th { background: #e6eaef; font-weight: 800; }
-        /* 序号列宽增加，确保不换行 */
         .sales-table th:nth-child(1) { width: 55px; } .sales-table th:nth-child(2) { width: auto; }
         .sales-table th:nth-child(3) { width: 60px; } .sales-table th:nth-child(4) { width: 70px; }
         .sales-table th:nth-child(5) { width: 100px; } .sales-table th:nth-child(6) { width: 90px; }
@@ -208,7 +206,6 @@
             </div>
         </div>
     </div>
-    <!-- 底部原有的按钮组已移至导出收据标签页，因此此处不再需要 -->
 </div>
 
 <script>
@@ -221,7 +218,6 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
-    // 根据屏幕宽度动态设置 user-scalable，电脑/平板禁止缩放
     function updateScalable() {
         const meta = document.querySelector('meta[name="viewport"]');
         if (window.innerWidth >= 794) {
@@ -360,7 +356,7 @@
         document.getElementById('amountCN').innerHTML = convertCurrency(sub);
     }
 
-    // 商品操作事件
+    // 商品操作
     document.getElementById('addItemBtn').onclick = () => {
         let n = document.getElementById('prodName').value.trim(); if (!n) return alert('请输入商品名称');
         items.push({ name: n, unit: document.getElementById('prodUnit').value||'个',
@@ -612,7 +608,7 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // 导出（水印、文件名、去蓝条）
+    // 导出（水印16px，更清晰）
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
@@ -627,7 +623,7 @@
             let wm = document.createElement('div'); wm.className = 'watermark-layer';
             let c = document.createElement('canvas'); c.width=800; c.height=800;
             let ctx = c.getContext('2d');
-            ctx.font='bold 40px "PingFang SC","微软雅黑"'; ctx.fillStyle='#7f8c8d';
+            ctx.font='bold 16px "PingFang SC","微软雅黑"'; ctx.fillStyle='#7f8c8d';
             ctx.translate(400,400); ctx.rotate(-25 * Math.PI / 180);
             ctx.textAlign='center'; ctx.textBaseline='middle';
             ctx.fillText(wmText,0,0);
