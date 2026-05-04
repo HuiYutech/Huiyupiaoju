@@ -18,7 +18,13 @@
         .image-mode-container .brand-overlay, .image-mode-container .company-stamp { position: absolute; z-index: 30; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; display: inline-block; }
         .image-control-bar-external { margin-top: 10px; display: none; justify-content: center; gap: 8px; background: rgba(0,0,0,0.65); padding: 6px 12px; border-radius: 40px; flex-wrap: wrap; }
         .image-control-bar-external button { background: white; border: none; padding: 5px 12px; border-radius: 32px; font-size: 13px; font-weight: bold; cursor: pointer; }
-        .watermark-layer { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10000; background-repeat:repeat; background-size:180px 180px; opacity:0.30; }
+        .watermark-layer {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            pointer-events:none; z-index:10000;
+            background-repeat:repeat;
+            background-size:220px 220px;
+            opacity:0.25;
+        }
         .brand-overlay, .company-stamp { position: absolute; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
         .brand-overlay { z-index: 20; border-radius: 6px; opacity: 0.9; }
         .company-stamp { z-index: 9999; opacity: 0.85; display: none; }
@@ -597,7 +603,21 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // 导出（水印16px）
+    // 水印生成函数（恢复最初范本）
+    function createWatermarkDataURL(text) {
+        let c = document.createElement('canvas'), s = 200;
+        c.width = s; c.height = s;
+        let ctx = c.getContext('2d');
+        ctx.font = 'bold 20px "PingFang SC","微软雅黑"';
+        ctx.fillStyle = '#7f8c8d';
+        ctx.translate(s/2, s/2);
+        ctx.rotate(-28 * Math.PI / 180);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, 0, 0);
+        return c.toDataURL();
+    }
+
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
@@ -610,13 +630,7 @@
         clone.querySelector('#editRemarkBtn')?.remove();
         if (wmText) {
             let wm = document.createElement('div'); wm.className = 'watermark-layer';
-            let c = document.createElement('canvas'); c.width=800; c.height=800;
-            let ctx = c.getContext('2d');
-            ctx.font='bold 16px "PingFang SC","微软雅黑"'; ctx.fillStyle='#7f8c8d';
-            ctx.translate(400,400); ctx.rotate(-25 * Math.PI / 180);
-            ctx.textAlign='center'; ctx.textBaseline='middle';
-            ctx.fillText(wmText,0,0);
-            wm.style.backgroundImage = `url(${c.toDataURL()})`;
+            wm.style.backgroundImage = `url(${createWatermarkDataURL(wmText)})`;
             clone.appendChild(wm);
         }
         return clone;
