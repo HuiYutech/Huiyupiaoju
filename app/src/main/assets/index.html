@@ -8,7 +8,7 @@
     <script src="js/jspdf.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
-        body { background: #eef2f5; font-family: 'Segoe UI','PingFang SC','微软雅黑',Roboto,sans-serif; margin: 0; padding: 0; overflow-x: hidden; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
+        body { background: #eef2f5; font-family: 'Segoe UI','PingFang SC','微软雅黑',Roboto,sans-serif; margin: 0; padding: 0; overflow-x: hidden; overflow-y: auto; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
         #app-wrapper { width: 794px; transform-origin: top center; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
         .invoice-container, .control-panel, .btn-group { width: 794px; }
         .invoice-container { position: relative; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-radius: 20px; padding: 12mm 7px 15mm 7px; margin-bottom: 16px; overflow: visible; user-select: none; -webkit-user-select: none; }
@@ -24,10 +24,11 @@
         .company-stamp { z-index: 9999; opacity: 0.85; display: none; }
         .brand-overlay.dragging, .company-stamp.dragging { cursor: grabbing; opacity: 0.7; }
         .control-panel { background: white; border-radius: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); margin-bottom: 12px; border:1px solid #e2edf2; overflow: hidden; }
-        .tab-buttons { display: flex; background: #eef2f5; border-bottom: 1px solid #e2edf2; overflow-x: auto; }
+        /* 标签栏背景改为白色 */
+        .tab-buttons { display: flex; background: #ffffff; border-bottom: 1px solid #e2edf2; overflow-x: auto; }
         .tab-btn { flex: 1; padding: 12px 8px; background: transparent; border: none; font-size: 14px; font-weight: 600; color: #4a627a; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
-        .tab-btn.active { color: #2c7da0; border-bottom-color: #2c7da0; background: white; }
-        .tab-pane { display: none; padding: 24px; }
+        .tab-btn.active { color: #2c7da0; border-bottom-color: #2c7da0; background: #f8fafc; }
+        .tab-pane { display: none; padding: 24px; background: white; }
         .tab-pane.active-pane { display: block; }
         .info-edit-panel { display: flex; gap: 14px; }
         .info-field { flex: 1; display: flex; flex-direction: column; gap: 6px; }
@@ -50,7 +51,8 @@
         .sales-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 14px; font-family: 'Consolas','PingFang SC', monospace; }
         .sales-table th, .sales-table td { border: 2px solid #1e2f3a; padding: 8px 6px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .sales-table th { background: #e6eaef; font-weight: 800; }
-        .sales-table th:nth-child(1) { width: 45px; } .sales-table th:nth-child(2) { width: auto; }
+        /* 序号列宽增加，确保不换行 */
+        .sales-table th:nth-child(1) { width: 55px; } .sales-table th:nth-child(2) { width: auto; }
         .sales-table th:nth-child(3) { width: 60px; } .sales-table th:nth-child(4) { width: 70px; }
         .sales-table th:nth-child(5) { width: 100px; } .sales-table th:nth-child(6) { width: 90px; }
         .sales-table th:nth-child(7) { width: auto; }
@@ -125,6 +127,7 @@
             <button class="tab-btn" data-tab="edit">添加删除</button>
             <button class="tab-btn" data-tab="image">商标管理</button>
             <button class="tab-btn" data-tab="batch">批量解析</button>
+            <button class="tab-btn" data-tab="export">导出收据</button>
         </div>
         <div class="tab-pane active-pane" id="tab-basic">
             <div class="info-edit-panel">
@@ -198,12 +201,14 @@
                 </div>
             </div>
         </div>
+        <div class="tab-pane" id="tab-export">
+            <div style="display:flex; justify-content:center; gap:40px; padding:20px 0;">
+                <button id="saveAsImageBtn" onclick="exportImage()" style="border:none; color:white; font-size:18px; font-weight:bold; padding:14px 32px; border-radius:56px; cursor:pointer; background:#2c7da0;">📷 保存为图片</button>
+                <button id="downloadPdfBtn" onclick="exportPDF()" style="border:none; color:white; font-size:18px; font-weight:bold; padding:14px 32px; border-radius:56px; cursor:pointer; background:#d9534f;">📄 下载 PDF</button>
+            </div>
+        </div>
     </div>
-
-    <div class="btn-group">
-        <button id="saveAsImageBtn" onclick="exportImage()">📷 保存为图片</button>
-        <button id="downloadPdfBtn" onclick="exportPDF()">📄 下载 PDF</button>
-    </div>
+    <!-- 底部原有的按钮组已移至导出收据标签页，因此此处不再需要 -->
 </div>
 
 <script>
@@ -347,7 +352,6 @@
             row.insertCell().innerText = it.remark || '';
         });
         updateTotal(); saveData();
-        // 保持公司章位置不变
         if (companyStamp.style.display !== 'none' && companyStamp.src) positionStampAtInvoiceNo();
     }
     function updateTotal() {
