@@ -10,10 +10,6 @@
         * { box-sizing: border-box; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
         body { background: #eef2f5; font-family: 'Segoe UI','PingFang SC','微软雅黑',Roboto,sans-serif; margin: 0; padding: 0; overflow-x: hidden; overflow-y: auto; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
         #app-wrapper { width: 794px; transform-origin: top center; padding: 45px 0 30px 0; display: flex; flex-direction: column; align-items: center; margin: 0 auto; }
-        /* 电脑/平板 1.5K 分辨率显示 */
-        @media (min-width: 794px) {
-            #app-wrapper { transform: scale(1.5); }
-        }
         .invoice-container, .control-panel, .btn-group { width: 794px; }
         .invoice-container { position: relative; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-radius: 20px; padding: 45px 7px 57px 7px; margin-bottom: 16px; overflow: visible; user-select: none; -webkit-user-select: none; }
         .normal-content { display: block; }
@@ -228,12 +224,16 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
+    // 自适应缩放
     function resizeApp() {
         const w = window.innerWidth;
         if (w < 794) {
             const scale = w / 794;
             appWrapper.style.transform = `scale(${scale})`;
             appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
+        } else {
+            appWrapper.style.transform = 'none';
+            appWrapper.style.marginBottom = '0';
         }
     }
     window.addEventListener('resize', resizeApp);
@@ -314,18 +314,46 @@
     }
     function convertCurrency(money) {
         if (isNaN(money)) return '零元整';
-        let num = Math.round(money*100)/100;
-        let digit = '零壹贰叁肆伍陆柒捌玖', units = ['','拾','佰','仟'], big = ['元','万','亿'];
-        let s = '', p = 0, int = Math.floor(num);
-        while (int > 0) {
-            let part = int % 10000, partStr = '', q = 0, tmp = part;
-            while (tmp > 0) { let cur = tmp % 10; partStr = (cur ? digit[cur] + units[q] : (partStr && partStr[0]!=='零' ? '零'+partStr : partStr)); tmp = Math.floor(tmp/10); q++; }
-            if (part < 1000 && p > 0 && s && s[0]!=='零') partStr = '零' + partStr;
-            s = partStr + (p===0?'':big[p]) + s;
-            int = Math.floor(int/10000); p++;
+        let num = Math.round(parseFloat(money) * 100) / 100;
+        let integerPart = Math.floor(num);
+        let decimalPart = Math.round((num - integerPart) * 100);
+        let digit = '零壹贰叁肆伍陆柒捌玖';
+        let units = ['', '拾', '佰', '仟'];
+        let bigUnits = ['元', '万', '亿'];
+        let result = '';
+        if (integerPart === 0) {
+            result = '零';
+        } else {
+            let strInt = '', p = 0, temp = integerPart;
+            while (temp > 0) {
+                let part = temp % 10000;
+                let partStr = '';
+                let q = 0, tmp = part;
+                while (tmp > 0) {
+                    let cur = tmp % 10;
+                    if (cur !== 0) partStr = digit[cur] + units[q] + partStr;
+                    else if (partStr.length > 0 && partStr[0] !== '零') partStr = '零' + partStr;
+                    tmp = Math.floor(tmp / 10);
+                    q++;
+                }
+                if (part < 1000 && p > 0 && strInt.length > 0 && strInt[0] !== '零') partStr = '零' + partStr;
+                strInt = partStr + (p === 0 ? '' : bigUnits[p]) + strInt;
+                temp = Math.floor(temp / 10000);
+                p++;
+            }
+            result = strInt + '元';
         }
-        return s + '元' + (Math.round(num*100)%100 === 0 ? '整' : '');
+        let jiao = Math.floor(decimalPart / 10);
+        let fen = decimalPart % 10;
+        if (jiao === 0 && fen === 0) {
+            result += '整';
+        } else {
+            if (jiao > 0) result += digit[jiao] + '角';
+            if (fen > 0) result += digit[fen] + '分';
+        }
+        return result;
     }
+
     function renderTable() {
         let tbody = document.getElementById('tableBody');
         tbody.innerHTML = '';
@@ -355,6 +383,7 @@
         let sub = items.reduce((s, i) => s + i.qty * i.price, 0);
         document.getElementById('amountTotal').innerText = sub.toFixed(2);
         document.getElementById('amountCN').innerHTML = convertCurrency(sub);
+        saveData();
     }
 
     // 商品操作
@@ -609,7 +638,7 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // 水印生成函数（恢复最初范本）
+    // 水印生成（最初范本）
     function createWatermarkDataURL(text) {
         let c = document.createElement('canvas'), s = 200;
         c.width = s; c.height = s;
@@ -624,6 +653,7 @@
         return c.toDataURL();
     }
 
+    // 导出
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
