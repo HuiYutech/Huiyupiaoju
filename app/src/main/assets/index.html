@@ -190,7 +190,7 @@
         <div class="tab-pane" id="tab-batch">
             <div style="background:#f9fafb;border-radius:20px;padding:20px;border:1px solid #e2edf2;">
                 <div style="font-weight:700;font-size:16px;color:#1e4663;margin-bottom:16px;">🧠 精准批量解析</div>
-                <textarea id="batchRawInput" rows="5" style="width:100%;border-radius:16px;border:1px solid #cbd5e1;padding:14px;font-family:monospace;font-size:14px;min-height:120px;" placeholder="示例商品 3 个 100&#10;服务费 500"></textarea>
+                <textarea id="batchRawInput" rows="5" style="width:100%;border-radius:16px;border:1px solid #cbd5e1;padding:14px;font-family:monospace;font-size:14px;min-height:120px;" placeholder="示例格式（每行一个商品，可含多种写法）：&#10;智能平板 3 台 2499&#10;网线 5根 2.8&#10;鼠标 10 个 25&#10;键盘 2个 160 (自动算单价80)&#10;服务费 1 次 200&#10;水晶头 100个 0.5&#10;合计大写自动计算"></textarea>
                 <div id="parsePreview" style="margin-top:16px;max-height:200px;overflow-y:auto;background:white;border-radius:16px;padding:12px;border:1px solid #e2e8f0;"></div>
                 <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:16px;">
                     <button id="parseBtn" style="background:transparent;border:1px solid #2c7da0;color:#2c7da0;padding:6px 16px;border-radius:32px;font-weight:bold;cursor:pointer;" onclick="parseBatch()">🔍 智能解析预览</button>
@@ -216,17 +216,23 @@
     const controlBar = document.getElementById('imageControlBarExternal');
     let originalImage = null, rotation = 0;
 
-    // 智能缩放：宽度小于794时缩小铺满，否则保持原样；缩不了弹窗提示
-    function resizeApp() {
-        try {
-            const w = window.innerWidth;
-            if (typeof w !== 'number' || isNaN(w)) throw new Error('无法获取屏幕宽度');
-            const scale = Math.min(1, w / 794);
-            appWrapper.style.transform = `scale(${scale})`;
-            appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
-        } catch (e) {
-            showToast('页面缩放失败：' + e.message + '，请尝试旋转屏幕或重启应用');
+    // 根据屏幕宽度动态设置 user-scalable，电脑/平板禁止缩放
+    function updateScalable() {
+        const meta = document.querySelector('meta[name="viewport"]');
+        if (window.innerWidth >= 794) {
+            meta.content = 'width=794, initial-scale=1.0, user-scalable=no, viewport-fit=cover';
+        } else {
+            meta.content = 'width=794, initial-scale=1.0, user-scalable=yes, viewport-fit=cover';
         }
+    }
+    window.addEventListener('resize', updateScalable);
+    window.addEventListener('load', updateScalable);
+
+    function resizeApp() {
+        const w = window.innerWidth;
+        const scale = Math.min(1, w / 794);
+        appWrapper.style.transform = `scale(${scale})`;
+        appWrapper.style.marginBottom = `-${appWrapper.offsetHeight * (1 - scale)}px`;
     }
     window.addEventListener('resize', resizeApp);
     window.addEventListener('orientationchange', () => setTimeout(resizeApp, 50));
@@ -341,6 +347,8 @@
             row.insertCell().innerText = it.remark || '';
         });
         updateTotal(); saveData();
+        // 保持公司章位置不变
+        if (companyStamp.style.display !== 'none' && companyStamp.src) positionStampAtInvoiceNo();
     }
     function updateTotal() {
         let sub = items.reduce((s, i) => s + i.qty * i.price, 0);
@@ -348,7 +356,7 @@
         document.getElementById('amountCN').innerHTML = convertCurrency(sub);
     }
 
-    // 商品操作
+    // 商品操作事件
     document.getElementById('addItemBtn').onclick = () => {
         let n = document.getElementById('prodName').value.trim(); if (!n) return alert('请输入商品名称');
         items.push({ name: n, unit: document.getElementById('prodUnit').value||'个',
@@ -386,7 +394,7 @@
         document.getElementById(id).addEventListener('input', syncInfo);
     });
 
-    // 图片拖拽
+    // 图片拖拽与存储
     function makeDraggable(el) {
         if (!el) return;
         let drag=false, sx, sy, sl, st;
@@ -521,6 +529,7 @@
         saveStamp(); placeOverlayInContainer(companyStamp);
     }
 
+    // 背景图旋转与居中
     function redrawCanvas() {
         if (!originalImage) return;
         const canvas = imageCanvas, ctx = canvas.getContext('2d');
@@ -583,6 +592,7 @@
         location.reload();
     };
 
+    // 批量解析
     function parseBatch() {
         let lines = document.getElementById('batchRawInput').value.split('\n').filter(l=>l.trim());
         let res = lines.map(line => {
@@ -598,7 +608,7 @@
         window._batch = []; document.getElementById('parsePreview').innerHTML='✅ 已添加'; renderTable();
     }
 
-    // 水印：画布800x800，字体40px，更密集更大
+    // 导出（水印、文件名、去蓝条）
     function getExportClone(wmText) {
         let orig = document.getElementById('invoiceContainer');
         let clone = orig.cloneNode(true);
@@ -700,6 +710,7 @@
         selectedIndex = 0; renderTable();
     } else renderTable();
     resizeApp();
+    updateScalable();
     if (typeof AndroidBridge !== 'undefined' && AndroidBridge) {
         try { AndroidBridge.requestStoragePermission(); } catch(e) {}
     }
